@@ -9,14 +9,20 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.grabbit"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_BACKGROUND_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.anonymous.grabbit"
     },
     "web": {
       "bundler": "metro",
@@ -25,6 +31,16 @@
     },
     "plugins": [
       "expo-router",
+      "expo-speech-recognition",
+      [
+        "expo-location",
+        {
+          "isIosBackgroundLocationEnabled": true,
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to alert you when you are near a store with items on your list.",
+          "locationAlwaysPermission": "Allow $(PRODUCT_NAME) to use your location to alert you when you are near a store with items on your list.",
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to alert you when you are near a store with items on your list."
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -33,7 +49,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true
