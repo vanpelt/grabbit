@@ -1,1 +1,5 @@
 nodeLinker: hoisted
+
+# eas needs this for the build to work...
+packages:
+  - "**"
