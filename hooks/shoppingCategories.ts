@@ -1,8 +1,8 @@
 export interface ItemCategory {
-  id: string
-  name: string
-  emoji: string
-  stores: string[]
+  id: string;
+  name: string;
+  emoji: string;
+  stores: string[];
 }
 
 export const CATEGORIES: ItemCategory[] = [
@@ -66,13 +66,12 @@ export const CATEGORIES: ItemCategory[] = [
     emoji: "❓",
     stores: [],
   },
-]
+];
 
 export interface ShoppingItem {
-  id: string
-  name: string
-  primaryCategory: ItemCategory
-  allCategories: ItemCategory[]
-  completed: boolean
-  createdAt: Date
+  id: string;
+  name: string;
+  primaryCategory: ItemCategory;
+  completed: boolean;
+  createdAt: Date;
 }

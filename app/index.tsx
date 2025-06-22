@@ -71,7 +71,9 @@ const App = () => {
   const lastActivityTime = useRef(0);
   const lastTranscript = useRef("");
 
-  const [itemsWithProximity, setItemsWithProximity] = useState<(ShoppingItem & { isNearby: boolean })[]>([]);
+  const [itemsWithProximity, setItemsWithProximity] = useState<
+    (ShoppingItem & { isNearby: boolean })[]
+  >([]);
 
   useEffect(() => {
     setupNotifications();
@@ -160,11 +162,11 @@ const App = () => {
       if (editingItemId.current) {
         // Find the item to get its current name
         const currentItem = shoppingItems.find(
-          (item) => item.id === editingItemId.current,
-        )
+          (item) => item.id === editingItemId.current
+        );
         if (currentItem) {
-          const updatedName = `${currentItem.name} ${newText}`.trim()
-          updateItem(editingItemId.current, { name: updatedName })
+          const updatedName = `${currentItem.name} ${newText}`.trim();
+          updateItem(editingItemId.current, { name: updatedName });
         }
       }
     }
@@ -214,11 +216,15 @@ const App = () => {
         // Handle cases where the model isn't ready and we get a promise
         if (asyncResult) {
           asyncResult.then((result) => {
-            console.log(`[Classifier Test] (Async) "${item}" -> "${result.primaryCategory.name}"`);
+            console.log(
+              `[Classifier Test] (Async) "${item}" -> "${result.primaryCategory.name}"`
+            );
           });
         } else {
           // Handle immediate results from keyword search
-          console.log(`[Classifier Test] (Sync) "${item}" -> "${syncResult.primaryCategory.name}"`);
+          console.log(
+            `[Classifier Test] (Sync) "${item}" -> "${syncResult.primaryCategory.name}"`
+          );
         }
       });
     }
@@ -228,43 +234,46 @@ const App = () => {
   useEffect(() => {
     if (!currentLocation) {
       setItemsWithProximity(
-        shoppingItems.map((item) => ({ ...item, isNearby: false })),
-      )
-      return
+        shoppingItems.map((item) => ({ ...item, isNearby: false }))
+      );
+      return;
     }
 
-    const allCategories = [
+    const uniqueCategories = [
       ...new Map(
-        shoppingItems.flatMap((i) => i.allCategories.map((c) => [c.id, c])),
+        shoppingItems.map((item) => [
+          item.primaryCategory.id,
+          item.primaryCategory,
+        ])
       ).values(),
-    ]
+    ];
 
-    const proximityByCategory = new Map<string, boolean>()
+    const proximityByCategory = new Map<string, boolean>();
 
-    for (const category of allCategories) {
-      const storesOfType = sampleStores.filter((s) => s.type === category.id)
-      let isAnyStoreNearby = false
+    for (const category of uniqueCategories) {
+      if (!category) continue;
+      const storesOfType = sampleStores.filter((s) => s.type === category.id);
+      let isAnyStoreNearby = false;
       for (const store of storesOfType) {
         const distance = getDistance(currentLocation.coords, {
           latitude: store.lat,
           longitude: store.lng,
-        })
+        });
         if (distance < 500) {
-          isAnyStoreNearby = true
-          break
+          isAnyStoreNearby = true;
+          break;
         }
       }
-      proximityByCategory.set(category.id, isAnyStoreNearby)
+      proximityByCategory.set(category.id, isAnyStoreNearby);
     }
 
     const newItemsWithProximity = shoppingItems.map((item) => {
-      const isNearby = item.allCategories.some(
-        (c) => proximityByCategory.get(c.id) === true,
-      )
-      return { ...item, isNearby }
-    })
-    setItemsWithProximity(newItemsWithProximity)
-  }, [currentLocation, shoppingItems])
+      const isNearby =
+        proximityByCategory.get(item.primaryCategory.id) ?? false;
+      return { ...item, isNearby };
+    });
+    setItemsWithProximity(newItemsWithProximity);
+  }, [currentLocation, shoppingItems]);
 
   TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
     if (error) {
@@ -310,7 +319,11 @@ const App = () => {
   });
 
   // --- Render methods ---
-  const renderItem = ({ item }: { item: ShoppingItem & { isNearby: boolean } }) => {
+  const renderItem = ({
+    item,
+  }: {
+    item: ShoppingItem & { isNearby: boolean };
+  }) => {
     return (
       <ShoppingListItem
         item={item}
