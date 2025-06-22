@@ -8,6 +8,7 @@
 import { useShoppingClassifier } from '@/hooks/useShoppingClassifier';
 import { useAudioPlayer } from 'expo-audio';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent
@@ -28,8 +29,37 @@ import {
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { useTracking } from '../hooks/useTracking';
 
 const GEOFENCE_TASK = 'GEOFENCE_TASK';
+
+const NOTIFICATION_CHANNEL_ID = 'geofence-notifications';
+
+async function setupNotifications() {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission not granted', 'You need to enable notifications for this app to work correctly.');
+    return;
+  }
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
+      name: 'Geofence Alerts',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
 
 // Type definitions
 interface Store {
@@ -74,9 +104,6 @@ const sampleStores: Store[] = [
 // --- Prop Types for Header ---
 interface ListHeaderProps {
   onAddItem: (name: string) => void;
-  onToggleTracking: () => void;
-  isTracking: boolean;
-  currentLocation: Location.LocationObject | null;
   isRecording: boolean;
   onToggleRecording: () => void;
   newItemName: string;
@@ -90,9 +117,6 @@ interface ListHeaderProps {
 const ListHeader = React.memo(
   ({
     onAddItem,
-    onToggleTracking,
-    isTracking,
-    currentLocation,
     isRecording,
     onToggleRecording,
     newItemName,
@@ -109,8 +133,6 @@ const ListHeader = React.memo(
 
     return (
       <>
-        <Text style={styles.h1}>🎯 Grabbit</Text>
-
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
@@ -129,14 +151,6 @@ const ListHeader = React.memo(
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.trackingButton}
-          onPress={onToggleTracking}>
-          <Text style={styles.buttonText}>
-            {isTracking ? 'STOP TRACKING' : 'START TRACKING'}
-          </Text>
-        </TouchableOpacity>
-
         <Text style={styles.h2}>Shopping List</Text>
       </>
     );
@@ -145,22 +159,34 @@ const ListHeader = React.memo(
 
 const audioSource = require('../assets/start.mp3');
 
+const capitalize = (s: string) => {
+  if (typeof s !== 'string' || s.length === 0) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 const App = () => {
   const classifier = useShoppingClassifier();
+  const { isTracking, startTracking, stopTracking } = useTracking();
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const shoppingItemsRef = useRef(shoppingItems);
   useEffect(() => {
     shoppingItemsRef.current = shoppingItems;
   }, [shoppingItems]);
 
-  const [isTracking, setIsTracking] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<Location.LocationObject | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const player = useAudioPlayer(audioSource);
   const pulseAnimation = useRef(new Animated.Value(1)).current;
   const silenceTimeout = useRef<number | null>(null);
-  const hasProcessedResult = useRef(false);
+  const idCounter = useRef(0);
+  const editingItemId = useRef<number | null>(null);
+  const lastActivityTime = useRef(0);
+  const lastTranscript = useRef('');
+
+  useEffect(() => {
+    setupNotifications();
+  }, []);
 
   const updateGeofences = useCallback(async () => {
     const hasGeofences = await Location.hasStartedGeofencingAsync(GEOFENCE_TASK);
@@ -195,26 +221,29 @@ const App = () => {
   const handleAddItem = useCallback(async (name: string) => {
     if (!classifier.isReady) {
       Alert.alert('Classifier Not Ready', 'The item classifier is still loading. Please wait a moment and try again.');
-      return;
+      return 0;
     }
     
-    setNewItemName(''); // Clear input after adding
+    setNewItemName('');
 
     const category = await classifier.classify(name);
+    const newId = Date.now() + idCounter.current++;
     const newItem: ShoppingItem = {
-      id: Date.now(),
-      name: name,
-      storeTypes: [category], // Automatically categorized
+      id: newId,
+      name: capitalize(name),
+      storeTypes: [category],
       isNearby: false,
       nearbyStores: [],
     };
-
+    
     setShoppingItems(prevItems => {
       const newItems = [...prevItems, newItem];
       shoppingItemsRef.current = newItems;
       updateGeofences();
       return newItems;
     });
+
+    return newId;
   }, [classifier, updateGeofences]);
 
   // --- Animation Handlers ---
@@ -250,7 +279,9 @@ const App = () => {
     console.log('onSpeechStart');
     setIsRecording(true);
     startPulsing();
-    hasProcessedResult.current = false;
+    editingItemId.current = null;
+    lastActivityTime.current = Date.now();
+    lastTranscript.current = '';
     silenceTimeout.current = setTimeout(() => {
       console.log('Silence timeout, stopping recognition.');
       stopSpeechRecognition();
@@ -265,6 +296,7 @@ const App = () => {
       clearTimeout(silenceTimeout.current);
       silenceTimeout.current = null;
     }
+    editingItemId.current = null;
   });
 
   useSpeechRecognitionEvent('error', (event) => {
@@ -273,18 +305,62 @@ const App = () => {
     Alert.alert('Speech Error', event.message);
   });
 
-  useSpeechRecognitionEvent('result', (event) => {
-    console.log('onSpeechResults: ', event);
-    if (event.results && event.results.length > 0 && !hasProcessedResult.current) {
-      const transcript = event.results[0]?.transcript;
-      if(transcript) {
-        hasProcessedResult.current = true;
-        handleAddItem(transcript);
+  useSpeechRecognitionEvent('result', async (event) => {
+    if (!event.results?.[0]?.transcript) return;
+
+    const now = Date.now();
+    const currentTranscript = event.results[0].transcript;
+
+    if (silenceTimeout.current) clearTimeout(silenceTimeout.current);
+    silenceTimeout.current = setTimeout(() => {
+      console.log('Silence timeout, stopping recognition.');
+      stopSpeechRecognition();
+    }, 5000);
+
+    const newText = currentTranscript.substring(lastTranscript.current.length).trim();
+    if (!newText) {
+      lastActivityTime.current = now;
+      return;
+    }
+    
+    const isPause = now - lastActivityTime.current > 1000;
+    const containsAnd = /\band\b/i.test(newText);
+
+    if (containsAnd) {
+      const parts = newText.split(/\band\b/i);
+      const firstPart = parts.shift()?.trim();
+
+      if (firstPart && editingItemId.current !== null) {
+        const currentItem = shoppingItemsRef.current.find(i => i.id === editingItemId.current);
+        if (currentItem) {
+          const updatedName = `${currentItem.name} ${firstPart}`;
+          setShoppingItems(prev => prev.map(i => i.id === editingItemId.current ? { ...i, name: updatedName } : i));
+        }
+      } else if (firstPart) {
+        await handleAddItem(firstPart);
+      }
+
+      for (const part of parts) {
+        const trimmedPart = part.trim();
+        if (trimmedPart) {
+          const newId = await handleAddItem(trimmedPart);
+          editingItemId.current = newId;
+        }
+      }
+
+    } else if (isPause || editingItemId.current === null) {
+      const newId = await handleAddItem(newText);
+      editingItemId.current = newId;
+    } else {
+      const currentItem = shoppingItemsRef.current.find(i => i.id === editingItemId.current);
+      if (currentItem) {
+        const updatedName = `${currentItem.name} ${newText}`;
+        setShoppingItems(prev => prev.map(i => i.id === editingItemId.current ? { ...i, name: updatedName } : i));
       }
     }
-    if(event.isFinal) {
-      stopSpeechRecognition();
-    }
+
+    lastActivityTime.current = now;
+    lastTranscript.current = currentTranscript;
   });
 
   const startSpeechRecognition = async () => {
@@ -352,7 +428,7 @@ const App = () => {
         }
 
         console.log('[ready] BG Geolocation permissions granted.');
-        setIsTracking(true);
+        startTracking();
 
         locationSubscription = await Location.watchPositionAsync(
             {
@@ -382,7 +458,7 @@ const App = () => {
         }
       });
     };
-  }, [isTracking, updateGeofences]);
+  }, [isTracking, updateGeofences, startTracking]);
   
   TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
     if (error) {
@@ -397,8 +473,20 @@ const App = () => {
         if (!store) return;
         
         const action = eventType === Location.GeofencingEventType.Enter ? 'ENTER' : 'EXIT';
-        Alert.alert('Geofence Alert', `You are ${action === 'ENTER' ? 'entering' : 'exiting'} the area for ${storeName}`);
-
+        
+        if (action === 'ENTER') {
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'You are near a store on your list!',
+              body: `You are approaching ${storeName}. Don't forget to check your shopping list.`,
+              sound: 'default',
+              vibrate: [0, 250, 250, 250],
+              priority: Notifications.AndroidNotificationPriority.HIGH,
+            },
+            trigger: null, // trigger immediately
+          });
+        }
+        
         const currentItems = shoppingItemsRef.current;
         const updatedItems = currentItems.map(item => {
             if (item.storeTypes.includes(store.type)) {
@@ -410,31 +498,6 @@ const App = () => {
         setShoppingItems(updatedItems);
     }
   });
-
-  const startTracking = useCallback(() => {
-    setIsTracking(true);
-  }, []);
-
-  const stopTracking = useCallback(() => {
-    setIsTracking(false);
-    setCurrentLocation(null);
-  }, []);
-
-  const handleRemoveItem = useCallback((id: number) => {
-    let itemToRemove: ShoppingItem | undefined;
-    setShoppingItems(prevItems => {
-      const newItems = prevItems.filter(item => {
-        if (item.id === id) {
-          itemToRemove = item;
-          return false;
-        }
-        return true;
-      });
-      shoppingItemsRef.current = newItems;
-      updateGeofences();
-      return newItems;
-    });
-  }, [updateGeofences]);
 
   // --- Render methods ---
   const renderItem = ({ item }: { item: ShoppingItem }) => {
@@ -466,6 +529,22 @@ const App = () => {
     );
   };
 
+  const handleRemoveItem = useCallback((id: number) => {
+    let itemToRemove: ShoppingItem | undefined;
+    setShoppingItems(prevItems => {
+      const newItems = prevItems.filter(item => {
+        if (item.id === id) {
+          itemToRemove = item;
+          return false;
+        }
+        return true;
+      });
+      shoppingItemsRef.current = newItems;
+      updateGeofences();
+      return newItems;
+    });
+  }, [updateGeofences]);
+
   return (
     <LinearGradient colors={['#667eea', '#764ba2']} style={styles.flex}>
       <StatusBar barStyle="light-content" />
@@ -478,9 +557,6 @@ const App = () => {
           ListHeaderComponent={
             <ListHeader
               onAddItem={handleAddItem}
-              onToggleTracking={isTracking ? stopTracking : startTracking}
-              isTracking={isTracking}
-              currentLocation={currentLocation}
               isRecording={isRecording}
               onToggleRecording={isRecording ? stopSpeechRecognition : startSpeechRecognition}
               newItemName={newItemName}
@@ -526,7 +602,7 @@ const styles = StyleSheet.create({
   },
   inputRow: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 20,
     alignItems: 'center',
   },
   input: {
@@ -598,6 +674,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#000',
+    flex: 1,
   },
   deleteButton: {
     backgroundColor: '#ff6b6b',
