@@ -9,6 +9,7 @@
     "build:ios": "pnpm dlx eas build --platform ios",
     "develop:ios": "pnpm dlx eas build --local -p ios --profile development",
     "preview:ios": "pnpm dlx eas build --local -p ios --profile preview",
+    "clean:ios": "expo prebuild --clean --platform ios",
     "doctor": "pnpm dlx expo-doctor",
     "web": "expo start --web",
     "lint": "expo lint"
