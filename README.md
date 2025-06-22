@@ -1,50 +1,75 @@
-# Welcome to your Expo app 👋
+# Grabbit: The Geofence Shopping Assistant
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Grabbit is a mobile application designed to help users remember their shopping list items by leveraging native geofencing capabilities. The app allows users to create a list of items they need to purchase and associate them with types of stores (e.g., grocery, pharmacy, hardware). When the user enters a predefined radius of a relevant store, the app will trigger a native notification to remind them of the items they can buy there.
 
-## Get started
+## Getting Started
 
-1. Install dependencies
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-   ```bash
-   npm install
-   ```
+### Prerequisites
 
-2. Start the app
+- [Node.js](https://nodejs.org/)
+- [pnpm](https://pnpm.io/installation)
+- [Expo Orbit](https://expo.dev/orbit) for running on-device (optional but recommended if you're on a Mac):
+  ```bash
+  brew install expo-orbit
+  ```
 
-   ```bash
-   npx expo start
-   ```
+### Installation & Setup
 
-In the output, you'll find options to open the app in a
+1.  **Install dependencies:**
+    This project uses `pnpm` as the package manager.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+    ```bash
+    pnpm install
+    ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+2.  **Log in to Expo Application Services (EAS):**
+    We use EAS for managing environment variables and builds. You can access the `eas-cli` via the `pnpm eas` helper script.
 
-## Get a fresh project
+    ```bash
+    pnpm eas login
+    ```
 
-When you're ready, run:
+3.  **Pull environment variables:**
+    This will pull the required environment variables for the `development` environment.
 
-```bash
-npm run reset-project
-```
+    ```bash
+    pnpm pull-env
+    ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Running the App
 
-## Learn more
+- **On an iOS or Android simulator:**
 
-To learn more about developing your project with Expo, look at the following resources:
+  ```bash
+  pnpm ios
+  # or
+  pnpm android
+  ```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- **On a physical device:**
+  Use the `-d` flag and we recommend using [Expo Orbit](https://expo.dev/orbit) to streamline the process.
 
-## Join the community
+  ```bash
+  pnpm ios -d
+  # or
+  pnpm android -d
+  ```
 
-Join our community of developers creating universal apps.
+## Technology Stack
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **Mobile Framework:** Expo (React Native)
+- **Package Manager:** pnpm
+- **Database:** SQLite with Drizzle ORM
+- **AI Classification:** `react-native-executorch` for on-device inference.
+- **Geolocation:** `expo-location` with native geofencing via `expo-task-manager`.
+- **Maps:** MapBox for finding nearby store locations.
+
+## Development Commands
+
+- **Start development server:** `pnpm start`
+- **Run linter:** `pnpm lint`
+- **Generate database migrations:** `pnpm drizzle-kit generate` (after changes to `db/schema.ts`)
+
+To learn more about developing your project with Expo, look at the [Expo documentation](https://docs.expo.dev/).
