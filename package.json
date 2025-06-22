@@ -4,10 +4,12 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "build:ios": "eas build --platform ios --profile preview",
+    "build:ios": "pnpm dlx eas build --platform ios",
+    "develop:ios": "pnpm dlx eas build --local -p ios --profile development",
+    "preview:ios": "pnpm dlx eas build --local -p ios --profile preview",
+    "doctor": "pnpm dlx expo-doctor",
     "web": "expo start --web",
     "lint": "expo lint"
   },
@@ -20,7 +22,9 @@
     "expo": "~53.0.12",
     "expo-audio": "~0.4.6",
     "expo-blur": "~14.1.5",
+    "expo-build-properties": "~0.14.6",
     "expo-constants": "~17.1.6",
+    "expo-dev-client": "~5.2.1",
     "expo-font": "~13.3.1",
     "expo-haptics": "~14.1.4",
     "expo-image": "~2.3.0",
@@ -55,10 +59,18 @@
     "@types/react": "~19.0.10",
     "babel-plugin-inline-import": "^3.0.0",
     "drizzle-kit": "^0.31.1",
-    "eas-cli": "^16.12.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",
     "typescript": "~5.8.3"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "expo-sqlite-devtools"
+        ]
+      }
+    }
+  }
 }
