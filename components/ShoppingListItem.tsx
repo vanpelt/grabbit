@@ -1,26 +1,24 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { ShoppingItem } from '../hooks/useShoppingList';
+import { ShoppingItem } from '../hooks/shoppingCategories';
 
 interface ShoppingListItemProps {
-  item: ShoppingItem;
-  onRemove: (id: number) => void;
-  onUpdateName: (id: number, newName: string) => void;
-  storeNames: string;
+  item: ShoppingItem & { isNearby?: boolean };
+  onRemove: (id: string) => void;
+  onUpdate: (id: string, updates: Partial<ShoppingItem>) => void;
 }
 
 export const ShoppingListItem = ({
   item,
   onRemove,
-  onUpdateName,
-  storeNames,
+  onUpdate,
 }: ShoppingListItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(item.name);
 
   const handleUpdate = () => {
     if (editedName.trim() && editedName.trim() !== item.name) {
-      onUpdateName(item.id, editedName.trim());
+      onUpdate(item.id, { name: editedName.trim() });
     } else {
       setEditedName(item.name);
     }
@@ -56,12 +54,12 @@ export const ShoppingListItem = ({
           <Text style={styles.deleteButtonText}>DELETE</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.itemDetails}>Available at: {storeNames}</Text>
+      <Text style={styles.itemDetails}>Category: {item.primaryCategory.name}</Text>
       <Text style={styles.itemDetails}>{nearbyText}</Text>
       <View style={styles.tagContainer}>
-        {item.storeTypes.map(type => (
-          <View key={type} style={styles.tag}>
-            <Text style={styles.tagText}>{type}</Text>
+        {item.allCategories.map((cat) => (
+          <View key={cat.id} style={styles.tag}>
+            <Text style={styles.tagText}>{cat.emoji} {cat.name}</Text>
           </View>
         ))}
       </View>
@@ -109,6 +107,7 @@ const styles = StyleSheet.create({
   },
   tagContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     marginTop: 10,
   },
   tag: {
@@ -117,6 +116,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 10,
     marginRight: 5,
+    marginBottom: 5,
   },
   tagText: {
     color: '#667eea',

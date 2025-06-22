@@ -29,6 +29,9 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "assetBundlePatterns": [
+      "assets/data/*"
+    ],
     "plugins": [
       "expo-router",
       "expo-speech-recognition",

@@ -1,19 +1,12 @@
 import { useShoppingClassifier } from '@/hooks/useShoppingClassifier';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Store } from '../data/stores';
+import { ShoppingItem } from './shoppingCategories';
 
 // Type definitions - can be moved to a separate types file later
 export interface NearbyStore {
   store: Store;
   distance: number;
-}
-
-export interface ShoppingItem {
-  id: number;
-  name: string;
-  storeTypes: string[];
-  isNearby: boolean;
-  nearbyStores: NearbyStore[];
 }
 
 const capitalize = (s: string) => {
@@ -26,57 +19,126 @@ export const useShoppingList = () => {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const idCounter = useRef(0);
 
-  const addItem = useCallback(async (name: string): Promise<number> => {
-    if (!classifier.isReady) {
-      // Consider how to handle this case, maybe return an error or a specific status
-      console.warn('Classifier not ready');
-      return -1;
-    }
-    const category = await classifier.classify(name);
-    const newId = Date.now() + idCounter.current++;
-    const newItem: ShoppingItem = {
-      id: newId,
-      name: capitalize(name),
-      storeTypes: [category],
-      isNearby: false,
-      nearbyStores: [],
-    };
-    setItems(prevItems => [...prevItems, newItem]);
-    return newId;
+  // Store the classifier in a ref to prevent stale closures in callbacks.
+  const classifierRef = useRef(classifier);
+  useEffect(() => {
+    classifierRef.current = classifier;
   }, [classifier]);
 
-  const removeItem = useCallback((id: number) => {
-    setItems(prevItems => prevItems.filter(item => item.id !== id));
-  }, []);
+  const addItem = useCallback(
+    async (name: string): Promise<string | null> => {
+      // Use the ref to get the latest classifier state.
+      if (!classifierRef.current.ready) {
+        console.warn('Classifier not ready');
+        return null;
+      }
 
-  const updateItemName = useCallback((id: number, name: string) => {
-    setItems(prevItems =>
-      prevItems.map(item => (item.id === id ? { ...item, name } : item))
-    );
-  }, []);
+      const { syncResult, asyncResult } = classifierRef.current.classify(name);
+      console.log("syncResult", syncResult.primaryCategory.name);
+      const newId = String(Date.now() + idCounter.current++);
 
-  const updateItemsProximity = useCallback((proximityByStoreType: Map<string, boolean>) => {
-    setItems(prevItems => {
-        let hasChanged = false;
-        const newItems = prevItems.map(item => {
-            const isNowNearby = item.storeTypes.some(type => proximityByStoreType.get(type) === true);
+      // Add the item immediately with the synchronous result.
+      const newItem: ShoppingItem = {
+        id: newId,
+        name: capitalize(name),
+        primaryCategory: syncResult.primaryCategory,
+        allCategories: syncResult.allCategories,
+        completed: false,
+        createdAt: new Date(),
+      };
+      setItems(prevItems => [...prevItems, newItem]);
 
-            if (item.isNearby !== isNowNearby) {
-                hasChanged = true;
-                return { ...item, isNearby: isNowNearby };
-            }
-            return item;
+      // If there's an async result, update the item when it resolves.
+      if (asyncResult) {
+        asyncResult.then((result) => {
+          console.log("asyncResult", result.primaryCategory.name);
+          setItems((prevItems) =>
+            prevItems.map((item) => {
+              if (item.id !== newId) return item
+              // Manually construct the new item to prevent accidental merging
+              return {
+                id: item.id,
+                name: item.name,
+                completed: item.completed,
+                createdAt: item.createdAt,
+                primaryCategory: result.primaryCategory,
+                allCategories: result.allCategories,
+              }
+            }),
+          );
         });
-        return hasChanged ? newItems : prevItems;
-    });
-  }, []);
+      }
 
+      return newId;
+    },
+    [], // No dependencies, so this callback is stable.
+  );
+
+  const removeItem = useCallback((id: string) => {
+    setItems((prevItems) => prevItems.filter((item) => item.id !== id))
+  }, [])
+
+  const updateItem = useCallback(
+    (id: string, updates: Partial<ShoppingItem>) => {
+      // If the update includes a name change and the classifier is ready,
+      // we need to re-classify the item.
+      if (updates.name && classifierRef.current.ready) {
+        const newName = updates.name
+
+        const { syncResult, asyncResult } =
+          classifierRef.current.classify(newName)
+
+        // Update the item with the new name and the synchronous classification result.
+        setItems((prevItems) =>
+          prevItems.map((item) => {
+            if (item.id === id) {
+              return {
+                ...item,
+                ...updates,
+                name: capitalize(newName),
+                primaryCategory: syncResult.primaryCategory,
+                allCategories: syncResult.allCategories,
+              }
+            }
+            return item
+          }),
+        )
+
+        // If there's an async result, schedule a follow-up update for even better classification.
+        if (asyncResult) {
+          asyncResult.then((result) => {
+            setItems((prevItems) =>
+              prevItems.map((item) => {
+                if (item.id !== id) return item
+                // Manually construct the new item to prevent accidental merging
+                return {
+                  id: item.id,
+                  name: item.name,
+                  completed: item.completed,
+                  createdAt: item.createdAt,
+                  primaryCategory: result.primaryCategory,
+                  allCategories: result.allCategories,
+                }
+              }),
+            )
+          })
+        }
+      } else {
+        // If there's no name change or classifier isn't ready, just apply the updates.
+        setItems((prevItems) =>
+          prevItems.map((item) =>
+            item.id === id ? { ...item, ...updates } : item,
+          ),
+        )
+      }
+    },
+    [],
+  )
 
   return {
     shoppingItems: items,
     addItem,
     removeItem,
-    updateItemName,
-    updateItemsProximity,
+    updateItem,
   };
 }; 

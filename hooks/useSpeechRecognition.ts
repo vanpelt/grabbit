@@ -68,7 +68,6 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions) => {
         clearTimeout(silenceTimeout.current);
         silenceTimeout.current = null;
     }
-    stop();
   });
 
   useSpeechRecognitionEvent('result', handleResult);

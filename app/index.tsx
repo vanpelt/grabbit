@@ -7,9 +7,10 @@
 
 import { ShoppingListHeader } from "@/components/ShoppingListHeader";
 import { ShoppingListItem } from "@/components/ShoppingListItem";
-import { sampleStores, storeMapping } from "@/data/stores";
+import { sampleStores } from "@/data/stores";
+import { ShoppingItem } from "@/hooks/shoppingCategories";
 import { useShoppingClassifier } from "@/hooks/useShoppingClassifier";
-import { ShoppingItem, useShoppingList } from "@/hooks/useShoppingList";
+import { useShoppingList } from "@/hooks/useShoppingList";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useTracking } from "@/hooks/useTracking";
 import * as Location from "expo-location";
@@ -61,20 +62,16 @@ async function setupNotifications() {
 }
 
 const App = () => {
-  const {
-    shoppingItems,
-    addItem,
-    removeItem,
-    updateItemName,
-    updateItemsProximity,
-  } = useShoppingList();
+  const { shoppingItems, addItem, removeItem, updateItem } = useShoppingList();
   const { isTracking, currentLocation } = useTracking(shoppingItems);
 
   const [newItemName, setNewItemName] = useState("");
   const pulseAnimation = useRef(new Animated.Value(1)).current;
-  const editingItemId = useRef<number | null>(null);
+  const editingItemId = useRef<string | null>(null);
   const lastActivityTime = useRef(0);
   const lastTranscript = useRef("");
+
+  const [itemsWithProximity, setItemsWithProximity] = useState<(ShoppingItem & { isNearby: boolean })[]>([]);
 
   useEffect(() => {
     setupNotifications();
@@ -137,10 +134,10 @@ const App = () => {
       const firstPart = parts.shift()?.trim();
 
       if (firstPart && editingItemId.current !== null) {
-        updateItemName(editingItemId.current, firstPart);
+        updateItem(editingItemId.current, { name: firstPart });
       } else if (firstPart) {
         const newId = await handleAddItem(firstPart);
-        if (typeof newId === "number") {
+        if (newId) {
           editingItemId.current = newId;
         }
       }
@@ -149,19 +146,26 @@ const App = () => {
         const trimmedPart = part.trim();
         if (trimmedPart) {
           const newId = await handleAddItem(trimmedPart);
-          if (typeof newId === "number") {
+          if (newId) {
             editingItemId.current = newId;
           }
         }
       }
     } else if (isPause || editingItemId.current === null) {
       const newId = await handleAddItem(newText);
-      if (typeof newId === "number") {
+      if (newId) {
         editingItemId.current = newId;
       }
     } else {
       if (editingItemId.current) {
-        updateItemName(editingItemId.current, newText);
+        // Find the item to get its current name
+        const currentItem = shoppingItems.find(
+          (item) => item.id === editingItemId.current,
+        )
+        if (currentItem) {
+          const updatedName = `${currentItem.name} ${newText}`.trim()
+          updateItem(editingItemId.current, { name: updatedName })
+        }
       }
     }
 
@@ -194,7 +198,7 @@ const App = () => {
 
   const classifier = useShoppingClassifier();
   useEffect(() => {
-    if (classifier.isReady) {
+    if (classifier.ready) {
       console.log("Classifier is ready, running test classifications...");
       const testItems = [
         "milk",
@@ -203,42 +207,64 @@ const App = () => {
         "tylenol",
         "a new book",
       ];
-      testItems.forEach(async (item) => {
-        const category = await classifier.classify(item);
-        console.log(`[Classifier Test] "${item}" -> "${category}"`);
+
+      testItems.forEach((item) => {
+        const { syncResult, asyncResult } = classifier.classify(item);
+
+        // Handle cases where the model isn't ready and we get a promise
+        if (asyncResult) {
+          asyncResult.then((result) => {
+            console.log(`[Classifier Test] (Async) "${item}" -> "${result.primaryCategory.name}"`);
+          });
+        } else {
+          // Handle immediate results from keyword search
+          console.log(`[Classifier Test] (Sync) "${item}" -> "${syncResult.primaryCategory.name}"`);
+        }
       });
     }
-  }, [classifier.isReady, classifier.classify]);
+  }, [classifier.ready, classifier.classify]);
 
   // --- Geolocation Effects and Handlers ---
   useEffect(() => {
-    if (!currentLocation) return;
+    if (!currentLocation) {
+      setItemsWithProximity(
+        shoppingItems.map((item) => ({ ...item, isNearby: false })),
+      )
+      return
+    }
 
-    // This is a simple foreground check. A more robust solution
-    // would involve checking against all store locations.
-    const allStoreTypes = [
-      ...new Set(shoppingItems.map(i => i.storeTypes).flat()),
-    ];
+    const allCategories = [
+      ...new Map(
+        shoppingItems.flatMap((i) => i.allCategories.map((c) => [c.id, c])),
+      ).values(),
+    ]
 
-    const proximityByStoreType = new Map<string, boolean>();
+    const proximityByCategory = new Map<string, boolean>()
 
-    for (const storeType of allStoreTypes) {
-      const storesOfType = sampleStores.filter(s => s.type === storeType);
-      let isAnyStoreNearby = false;
+    for (const category of allCategories) {
+      const storesOfType = sampleStores.filter((s) => s.type === category.id)
+      let isAnyStoreNearby = false
       for (const store of storesOfType) {
         const distance = getDistance(currentLocation.coords, {
           latitude: store.lat,
           longitude: store.lng,
-        });
+        })
         if (distance < 500) {
-          isAnyStoreNearby = true;
-          break;
+          isAnyStoreNearby = true
+          break
         }
       }
-      proximityByStoreType.set(storeType, isAnyStoreNearby);
+      proximityByCategory.set(category.id, isAnyStoreNearby)
     }
-    updateItemsProximity(proximityByStoreType);
-  }, [currentLocation, shoppingItems, updateItemsProximity]);
+
+    const newItemsWithProximity = shoppingItems.map((item) => {
+      const isNearby = item.allCategories.some(
+        (c) => proximityByCategory.get(c.id) === true,
+      )
+      return { ...item, isNearby }
+    })
+    setItemsWithProximity(newItemsWithProximity)
+  }, [currentLocation, shoppingItems])
 
   TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
     if (error) {
@@ -284,17 +310,12 @@ const App = () => {
   });
 
   // --- Render methods ---
-  const renderItem = ({ item }: { item: ShoppingItem }) => {
-    const storeNames = item.storeTypes
-      .map((type) => storeMapping[type])
-      .flat()
-      .join(", ");
+  const renderItem = ({ item }: { item: ShoppingItem & { isNearby: boolean } }) => {
     return (
       <ShoppingListItem
         item={item}
         onRemove={removeItem}
-        onUpdateName={updateItemName}
-        storeNames={storeNames}
+        onUpdate={updateItem}
       />
     );
   };
@@ -304,9 +325,9 @@ const App = () => {
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.flex}>
         <FlatList
-          data={shoppingItems}
+          data={itemsWithProximity}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           ListHeaderComponent={
             <ShoppingListHeader

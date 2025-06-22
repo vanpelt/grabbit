@@ -6,13 +6,13 @@ export interface Store {
 }
 
 export const storeMapping: { [key: string]: string[] } = {
-  grocery: ['Safeway', 'Kroger', 'Walmart', 'Target', 'Whole Foods', 'Trader Joes'],
-  pharmacy: ['CVS', 'Walgreens', 'Rite Aid', 'Pharmacy'],
-  hardware: ['Home Depot', 'Lowes', 'Hardware Store', 'ACE Hardware'],
-  electronics: ['Best Buy', 'Apple Store'],
-  clothing: ['Macys', 'Target', 'Nordstrom', 'Gap', 'H&M'],
-  bookstore: ['Barnes & Noble', 'Bookstore', 'Library'],
-  department: ['Target', 'Walmart', 'Macys', 'Costco', 'Sams Club'],
+  grocery: ["grocery", "supermarket", "convenience_store"],
+  pharmacy: ["pharmacy"],
+  hardware: ["hardware_store"],
+  electronics: ["electronics_shop"],
+  clothing: ["clothing_store"],
+  bookstore: ["bookstore"],
+  department: ["department_store"],
 };
 
 export const sampleStores: Store[] = [
