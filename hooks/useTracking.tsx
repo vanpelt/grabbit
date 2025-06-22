@@ -1,42 +1,96 @@
-import React, { createContext, ReactNode, useCallback, useContext, useState } from 'react';
+import * as Location from 'expo-location';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert } from 'react-native';
+import { sampleStores } from '../data/stores';
+import { ShoppingItem } from './useShoppingList';
 
-interface TrackingContextType {
-  isTracking: boolean;
-  startTracking: () => void;
-  stopTracking: () => void;
-  toggleTracking: () => void;
-}
+const GEOFENCE_TASK = 'GEOFENCE_TASK';
 
-const TrackingContext = createContext<TrackingContextType | undefined>(undefined);
+export const useTracking = (shoppingItems: ShoppingItem[]) => {
+  const [isTracking, setIsTracking] = useState(true);
+  const [currentLocation, setCurrentLocation] = useState<Location.LocationObject | null>(null);
+  const shoppingItemsRef = useRef(shoppingItems);
 
-export const TrackingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isTracking, setIsTracking] = useState(true); // Enabled by default as requested
+  useEffect(() => {
+    shoppingItemsRef.current = shoppingItems;
+  }, [shoppingItems]);
 
-  const startTracking = useCallback(() => {
+  const updateGeofences = useCallback(async () => {
+    const hasGeofences = await Location.hasStartedGeofencingAsync(GEOFENCE_TASK);
+    if (hasGeofences) {
+      await Location.stopGeofencingAsync(GEOFENCE_TASK);
+    }
+
+    const allStores = sampleStores.filter(s =>
+      shoppingItemsRef.current.some(item => item.storeTypes.includes(s.type))
+    );
+
+    if (allStores.length === 0) {
+      return;
+    }
+
+    const geofenceRegions = allStores.map(store => ({
+      identifier: store.name,
+      latitude: store.lat,
+      longitude: store.lng,
+      radius: 500,
+      notifyOnEnter: true,
+      notifyOnExit: true,
+    }));
+
+    await Location.startGeofencingAsync(GEOFENCE_TASK, geofenceRegions);
+  }, []);
+
+  const startTracking = useCallback(async () => {
+    let { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+    if (foregroundStatus !== 'granted') {
+        Alert.alert('Permission to access location was denied');
+        return;
+    }
+
+    let { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+    if (backgroundStatus !== 'granted') {
+        console.log('Permission to access background location was denied. Proceeding with foreground tracking only.');
+    }
+
     setIsTracking(true);
   }, []);
 
-  const stopTracking = useCallback(() => {
-    setIsTracking(false);
-  }, []);
+  useEffect(() => {
+    let locationSubscription: Location.LocationSubscription | null = null;
 
-  const toggleTracking = useCallback(() => {
-    setIsTracking(prev => !prev);
-  }, []);
+    const startLocationServices = async () => {
+      await startTracking();
+      locationSubscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 10000,
+          distanceInterval: 10,
+        },
+        (location) => {
+          setCurrentLocation(location);
+        }
+      );
+      updateGeofences();
+    };
 
-  const value = { isTracking, startTracking, stopTracking, toggleTracking };
+    if (isTracking) {
+      startLocationServices();
+    }
 
-  return (
-    <TrackingContext.Provider value={value}>
-      {children}
-    </TrackingContext.Provider>
-  );
-};
+    return () => {
+      locationSubscription?.remove();
+      Location.hasStartedGeofencingAsync(GEOFENCE_TASK).then(hasGeofences => {
+        if (hasGeofences) {
+          Location.stopGeofencingAsync(GEOFENCE_TASK);
+        }
+      });
+    };
+  }, [isTracking, startTracking, updateGeofences]);
 
-export const useTracking = () => {
-  const context = useContext(TrackingContext);
-  if (context === undefined) {
-    throw new Error('useTracking must be used within a TrackingProvider');
-  }
-  return context;
+  useEffect(() => {
+    updateGeofences();
+  }, [shoppingItems, updateGeofences]);
+  
+  return { isTracking, currentLocation, startTracking };
 }; 
