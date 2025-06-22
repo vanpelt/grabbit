@@ -10,6 +10,7 @@ import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
 import { useSQLiteDevTools } from "expo-sqlite-devtools";
 import { Suspense, useEffect, useMemo } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import { TrackingProvider } from "../contexts/TrackingContext";
 import migrations from "../drizzle/migrations";
 
 // Import the geofence task to ensure it's defined early
@@ -79,7 +80,9 @@ function MainLayout() {
 
   return (
     <DbContext.Provider value={db}>
-      <RootLayoutNav />
+      <TrackingProvider>
+        <RootLayoutNav />
+      </TrackingProvider>
     </DbContext.Provider>
   );
 }

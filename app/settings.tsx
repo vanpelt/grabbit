@@ -1,10 +1,19 @@
 import * as Notifications from "expo-notifications";
 import React from "react";
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
-import { useTracking } from "../hooks/useTracking";
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useTracking } from "../contexts/TrackingContext";
 
 const SettingsScreen = () => {
-  const { isTracking, toggleTracking } = useTracking();
+  const { isTracking, toggleTracking, geofencedStores, isLoading } =
+    useTracking();
 
   const handleTestNotification = () => {
     const testStoreName = "Safeway Downtown"; // Using a sample store for the test
@@ -30,6 +39,30 @@ const SettingsScreen = () => {
       <TouchableOpacity style={styles.button} onPress={handleTestNotification}>
         <Text style={styles.buttonText}>Test Notification</Text>
       </TouchableOpacity>
+      <View style={styles.geofenceContainer}>
+        <Text style={styles.geofenceTitle}>Active Geofences</Text>
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#3498db" />
+        ) : geofencedStores.length > 0 ? (
+          <FlatList
+            data={geofencedStores}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.geofenceRow}>
+                <Text style={styles.geofenceText}>{item.name}</Text>
+                <Text style={styles.geofenceDistance}>
+                  {item.distance.toFixed(2)} km
+                </Text>
+              </View>
+            )}
+          />
+        ) : (
+          <Text style={styles.noGeofencesText}>
+            No active geofences. Add items to your shopping list to enable
+            geofencing.
+          </Text>
+        )}
+      </View>
     </View>
   );
 };
@@ -62,6 +95,37 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  geofenceContainer: {
+    marginTop: 20,
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 8,
+  },
+  geofenceTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  geofenceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  geofenceText: {
+    fontSize: 16,
+  },
+  geofenceDistance: {
+    fontSize: 16,
+    color: "#888",
+  },
+  noGeofencesText: {
+    fontSize: 16,
+    color: "#888",
+    textAlign: "center",
+    paddingVertical: 10,
   },
 });
 

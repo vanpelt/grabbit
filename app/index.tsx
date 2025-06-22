@@ -7,14 +7,12 @@
 
 import { ShoppingListHeader } from "@/components/ShoppingListHeader";
 import { ShoppingListItem } from "@/components/ShoppingListItem";
+import { useTracking } from "@/contexts/TrackingContext";
 import { sampleStores } from "@/data/stores";
 import { useShoppingClassifier } from "@/hooks/useShoppingClassifier";
 import { useShoppingList } from "@/hooks/useShoppingList";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { useTracking } from "@/hooks/useTracking";
-import { GEOFENCE_TASK } from "@/tasks/geofenceTask";
 import { ShoppingItem } from "@/utils/shoppingCategories";
-import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -61,7 +59,7 @@ async function setupNotifications() {
 
 const App = () => {
   const { shoppingItems, addItem, removeItem, updateItem } = useShoppingList();
-  const { isTracking, currentLocation } = useTracking(shoppingItems);
+  const { isTracking, currentLocation } = useTracking();
 
   const [newItemName, setNewItemName] = useState("");
   const pulseAnimation = useRef(new Animated.Value(1)).current;
@@ -272,7 +270,6 @@ const App = () => {
     });
     setItemsWithProximity(newItemsWithProximity);
   }, [currentLocation, shoppingItems]);
-
 
   // --- Render methods ---
   const renderItem = ({
