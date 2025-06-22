@@ -5,8 +5,8 @@ import {
   MULTI_QA_MINILM_L6_COS_V1_TOKENIZER,
   useTextEmbeddings,
 } from "react-native-executorch";
-import { keywordCategorize } from "./keywordCategorizer";
-import { CATEGORIES, ItemCategory } from "./shoppingCategories";
+import { keywordCategorize } from "../utils/keywordCategorizer";
+import { CATEGORIES, ItemCategory } from "../utils/shoppingCategories";
 // Directly import the JSON data. Webpack/Metro will parse this for us.
 import categoryVectors from "../assets/data/category_vectors.json";
 

@@ -2,9 +2,11 @@ import { useDb } from "@/db";
 import { shoppingItems } from "@/db/schema";
 import { useShoppingClassifier } from "@/hooks/useShoppingClassifier";
 import { eq } from "drizzle-orm";
+import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Store } from "../data/stores";
-import { ShoppingItem as ShoppingItemWithCategories } from "./shoppingCategories";
+import { ShoppingItem as ShoppingItemWithCategories } from "../utils/shoppingCategories";
+import { useStoreManager } from "./useStoreManager";
 
 export type ShoppingItem = ShoppingItemWithCategories;
 
@@ -23,6 +25,10 @@ export const useShoppingList = () => {
   const db = useDb();
   const classifier = useShoppingClassifier();
   const [items, setItems] = useState<ShoppingItem[]>([]);
+  const { updateNearbyStores } = useStoreManager();
+  const [location, setLocation] = useState<Location.LocationObject | null>(
+    null
+  );
 
   const mapDbItemToShoppingItem = (
     item: typeof shoppingItems.$inferSelect
@@ -36,6 +42,19 @@ export const useShoppingList = () => {
   };
 
   useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.error("Permission to access location was denied");
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      setLocation(location);
+    })();
+  }, []);
+
+  useEffect(() => {
     if (!db) return;
     async function fetchItems() {
       const result = await db.query.shoppingItems.findMany();
@@ -43,6 +62,15 @@ export const useShoppingList = () => {
     }
     fetchItems();
   }, [db]);
+
+  useEffect(() => {
+    if (items.length > 0 && location) {
+      const categories = [
+        ...new Set(items.map((item) => item.primaryCategory.id)),
+      ];
+      updateNearbyStores(categories, location);
+    }
+  }, [items, location, updateNearbyStores]);
 
   // Store the classifier in a ref to prevent stale closures in callbacks.
   const classifierRef = useRef(classifier);

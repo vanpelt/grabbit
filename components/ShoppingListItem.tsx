@@ -13,7 +13,7 @@ import {
   CATEGORIES,
   ItemCategory,
   ShoppingItem,
-} from "../hooks/shoppingCategories";
+} from "../utils/shoppingCategories";
 
 interface ShoppingListItemProps {
   item: ShoppingItem & { isNearby?: boolean };

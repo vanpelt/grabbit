@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
   integer,
-  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -27,13 +26,19 @@ export const shoppingItems = sqliteTable("shopping_items", {
     .default(sql`(strftime('%s', 'now'))`),
 });
 
-export const locations = sqliteTable("locations", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  storeType: text("store_type").notNull(),
-  latitude: real("latitude").notNull(),
-  longitude: real("longitude").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(strftime('%s', 'now'))`),
-});
+export const locations = sqliteTable(
+  "locations",
+  {
+    id: integer("id").primaryKey(),
+    name: text("name").notNull(),
+    lat: integer("lat").notNull(),
+    lng: integer("lng").notNull(),
+    type: text("type").notNull(),
+    mapboxId: text("mapbox_id").notNull(),
+  },
+  (locations) => {
+    return {
+      mapboxIdIndex: uniqueIndex("mapbox_id_index").on(locations.mapboxId),
+    };
+  }
+);

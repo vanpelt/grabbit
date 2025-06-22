@@ -1,6 +1,6 @@
-import { CATEGORIES, ItemCategory } from "./shoppingCategories"
+import { CATEGORIES, ItemCategory } from "./shoppingCategories";
 
-const UNKNOWN_CATEGORY = CATEGORIES.find((c) => c.id === "unknown")!
+const UNKNOWN_CATEGORY = CATEGORIES.find((c) => c.id === "unknown")!;
 
 // This database is intentionally kept separate to allow for a distinct
 // keyword-based classification system that can be used as a fast first-pass
@@ -292,7 +292,7 @@ const ITEM_DATABASE: Record<string, string[]> = {
   "midi interface": ["music", "electronics"],
   "audio cables": ["music", "electronics"],
   "recording equipment": ["music", "electronics"],
-}
+};
 
 /**
  * A fast, keyword-based item classifier.
@@ -311,41 +311,41 @@ const ITEM_DATABASE: Record<string, string[]> = {
  *          match is found, it returns the "Unknown" category.
  */
 export function keywordCategorize(itemName: string): {
-  primaryCategory: ItemCategory
-  allCategories: ItemCategory[]
+  primaryCategory: ItemCategory;
+  allCategories: ItemCategory[];
 } {
-  const lowerName = itemName.toLowerCase().trim()
+  const lowerName = itemName.toLowerCase().trim();
 
   if (!lowerName) {
     return {
       primaryCategory: UNKNOWN_CATEGORY,
       allCategories: [UNKNOWN_CATEGORY],
-    }
+    };
   }
 
   // 1. Check for an exact match in the database first for best performance.
-  const exactMatchCategoryIds = ITEM_DATABASE[lowerName]
+  const exactMatchCategoryIds = ITEM_DATABASE[lowerName];
   if (exactMatchCategoryIds) {
     const categories = exactMatchCategoryIds
       .map((id) => CATEGORIES.find((cat) => cat.id === id))
-      .filter(Boolean) as ItemCategory[]
+      .filter(Boolean) as ItemCategory[];
 
     if (categories.length > 0) {
       return {
         primaryCategory: categories[0],
         allCategories: categories,
-      }
+      };
     }
   }
 
   // 2. If no exact match, perform partial matching with scoring.
   // Longer keyword matches are given a higher score.
-  const categoryScores: Record<string, number> = {}
+  const categoryScores: Record<string, number> = {};
   for (const [keyword, categoryIds] of Object.entries(ITEM_DATABASE)) {
     if (lowerName.includes(keyword)) {
-      const score = keyword.length // Longer keywords are more specific
+      const score = keyword.length; // Longer keywords are more specific
       for (const catId of categoryIds) {
-        categoryScores[catId] = (categoryScores[catId] || 0) + score
+        categoryScores[catId] = (categoryScores[catId] || 0) + score;
       }
     }
   }
@@ -353,18 +353,18 @@ export function keywordCategorize(itemName: string): {
   if (Object.keys(categoryScores).length > 0) {
     // Sort categories by score in descending order
     const sortedCategoryIds = Object.keys(categoryScores).sort(
-      (a, b) => categoryScores[b] - categoryScores[a],
-    )
+      (a, b) => categoryScores[b] - categoryScores[a]
+    );
 
     const categories = sortedCategoryIds
       .map((id) => CATEGORIES.find((cat) => cat.id === id))
-      .filter(Boolean) as ItemCategory[]
+      .filter(Boolean) as ItemCategory[];
 
     if (categories.length > 0) {
       return {
         primaryCategory: categories[0], // The one with the highest score
         allCategories: categories, // All matched categories, sorted by score
-      }
+      };
     }
   }
 
@@ -372,5 +372,5 @@ export function keywordCategorize(itemName: string): {
   return {
     primaryCategory: UNKNOWN_CATEGORY,
     allCategories: [UNKNOWN_CATEGORY],
-  }
+  };
 }

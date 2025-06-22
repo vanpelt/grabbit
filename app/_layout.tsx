@@ -7,6 +7,7 @@ import { migrate } from "drizzle-orm/expo-sqlite/migrator";
 import { useFonts } from "expo-font";
 import { SplashScreen, Stack, router } from "expo-router";
 import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { useSQLiteDevTools } from "expo-sqlite-devtools";
 import { Suspense, useEffect, useMemo } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import migrations from "../drizzle/migrations";
@@ -48,6 +49,7 @@ export default function RootLayout() {
 
 function MainLayout() {
   const expoDb = useSQLiteContext();
+  useSQLiteDevTools(expoDb);
   // We use useMemo to ensure the drizzle instance is stable
   const db = useMemo(() => drizzle(expoDb, { schema }), [expoDb]);
 

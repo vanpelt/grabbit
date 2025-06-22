@@ -8,11 +8,11 @@
 import { ShoppingListHeader } from "@/components/ShoppingListHeader";
 import { ShoppingListItem } from "@/components/ShoppingListItem";
 import { sampleStores } from "@/data/stores";
-import { ShoppingItem } from "@/hooks/shoppingCategories";
 import { useShoppingClassifier } from "@/hooks/useShoppingClassifier";
 import { useShoppingList } from "@/hooks/useShoppingList";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useTracking } from "@/hooks/useTracking";
+import { ShoppingItem } from "@/utils/shoppingCategories";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import * as TaskManager from "expo-task-manager";
