@@ -12,10 +12,10 @@ import { useShoppingClassifier } from "@/hooks/useShoppingClassifier";
 import { useShoppingList } from "@/hooks/useShoppingList";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useTracking } from "@/hooks/useTracking";
+import { GEOFENCE_TASK } from "@/tasks/geofenceTask";
 import { ShoppingItem } from "@/utils/shoppingCategories";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
-import * as TaskManager from "expo-task-manager";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -28,8 +28,6 @@ import {
   Text,
 } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
-
-const GEOFENCE_TASK = "GEOFENCE_TASK";
 const NOTIFICATION_CHANNEL_ID = "geofence-notifications";
 
 async function setupNotifications() {
@@ -275,48 +273,6 @@ const App = () => {
     setItemsWithProximity(newItemsWithProximity);
   }, [currentLocation, shoppingItems]);
 
-  TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
-    if (error) {
-      console.error("[GeofenceTask] error:", error);
-      return;
-    }
-    if (data) {
-      const { eventType, region } = data as {
-        eventType: Location.GeofencingEventType;
-        region: {
-          identifier: string;
-          radius: number;
-          latitude: number;
-          longitude: number;
-          state: Location.GeofencingRegionState;
-        };
-      };
-      const storeName = region.identifier;
-
-      const store = sampleStores.find((s) => s.name === storeName);
-      if (!store) return;
-
-      const action =
-        eventType === Location.GeofencingEventType.Enter ? "ENTER" : "EXIT";
-
-      if (action === "ENTER") {
-        Notifications.scheduleNotificationAsync({
-          content: {
-            title: "You are near a store on your list!",
-            body: `You are approaching ${storeName}. Don't forget to check your shopping list.`,
-            sound: "default",
-            vibrate: [0, 250, 250, 250],
-            priority: Notifications.AndroidNotificationPriority.HIGH,
-          },
-          trigger: null, // trigger immediately
-        });
-      }
-
-      // TODO: Find a way to update the UI from the background task.
-      // Direct state updates are not possible here. An event bus or
-      // other mechanism would be needed.
-    }
-  });
 
   // --- Render methods ---
   const renderItem = ({

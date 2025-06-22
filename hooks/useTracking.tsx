@@ -3,7 +3,7 @@ import { locations } from "@/db/schema";
 import { getDistance } from "@/utils/location";
 import { inArray } from "drizzle-orm";
 import * as Location from "expo-location";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { ShoppingItem } from "./useShoppingList";
 import { useStoreManager } from "./useStoreManager";
@@ -16,23 +16,50 @@ export const useTracking = (shoppingItems?: ShoppingItem[]) => {
   const [isTracking, setIsTracking] = useState(true);
   const [currentLocation, setCurrentLocation] =
     useState<Location.LocationObject | null>(null);
+
+  // Stable refs to prevent cascading re-renders
   const shoppingItemsRef = useRef(shoppingItems ?? []);
   const updateInProgressRef = useRef(false);
+  const lastCategoriesRef = useRef<string>("");
+  const debounceTimerRef = useRef<NodeJS.Timeout | number | null>(null);
+  const lastLocationRef = useRef<Location.LocationObject | null>(null);
 
+  // Only update shopping items ref when the actual categories change
   useEffect(() => {
-    if (shoppingItems) {
+    if (!shoppingItems) return;
+
+    const categories = [
+      ...new Set(shoppingItems.map((item) => item.primaryCategory.id)),
+    ].sort();
+    const categoriesKey = categories.join(",");
+
+    // Only update if categories actually changed
+    if (categoriesKey !== lastCategoriesRef.current) {
+      console.log("🔄 Categories changed:", categoriesKey);
       shoppingItemsRef.current = shoppingItems;
+      lastCategoriesRef.current = categoriesKey;
+
+      // Trigger update when categories change
+      if (currentLocation && isTracking) {
+        debouncedUpdateGeofences();
+      }
     }
-  }, [shoppingItems]);
+  }, [shoppingItems, currentLocation, isTracking]);
 
   const updateGeofences = useCallback(async () => {
     // Prevent concurrent executions
     if (updateInProgressRef.current || !currentLocation || !db) {
+      console.log("🚫 Skipping updateGeofences:", {
+        updateInProgress: updateInProgressRef.current,
+        hasLocation: !!currentLocation,
+        hasDb: !!db,
+      });
       return;
     }
 
     try {
       updateInProgressRef.current = true;
+      console.log("🔄 Starting updateGeofences");
 
       const hasGeofences = await Location.hasStartedGeofencingAsync(
         GEOFENCE_TASK
@@ -47,9 +74,11 @@ export const useTracking = (shoppingItems?: ShoppingItem[]) => {
         ),
       ];
       if (categories.length === 0) {
+        console.log("🚫 No categories to track");
         return;
       }
 
+      console.log("📍 Updating stores for categories:", categories);
       await updateNearbyStores(categories, currentLocation);
 
       const allStoresForCategories = await db.query.locations.findMany({
@@ -57,6 +86,7 @@ export const useTracking = (shoppingItems?: ShoppingItem[]) => {
       });
 
       if (allStoresForCategories.length === 0) {
+        console.log("🚫 No stores found for categories");
         return;
       }
 
@@ -75,6 +105,7 @@ export const useTracking = (shoppingItems?: ShoppingItem[]) => {
       const nearbyStores = allStoresWithDistance.slice(0, 20);
 
       if (nearbyStores.length === 0) {
+        console.log("🚫 No nearby stores");
         return;
       }
 
@@ -88,21 +119,23 @@ export const useTracking = (shoppingItems?: ShoppingItem[]) => {
       }));
 
       await Location.startGeofencingAsync(GEOFENCE_TASK, geofenceRegions);
+      console.log("✅ Geofences updated successfully");
+    } catch (error) {
+      console.error("❌ Error updating geofences:", error);
     } finally {
       updateInProgressRef.current = false;
     }
   }, [currentLocation, db, updateNearbyStores]);
 
-  // Debounce the updateGeofences function to prevent rapid consecutive calls
-  const debouncedUpdateGeofences = useMemo(() => {
-    let timeoutId: NodeJS.Timeout | number | null = null;
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        updateGeofences();
-        timeoutId = null;
-      }, 2000); // 2 second debounce
-    };
+  // Stable debounced function that doesn't recreate on every render
+  const debouncedUpdateGeofences = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      updateGeofences();
+      debounceTimerRef.current = null;
+    }, 2000); // 2 second debounce
   }, [updateGeofences]);
 
   const startTracking = useCallback(async () => {
@@ -136,8 +169,8 @@ export const useTracking = (shoppingItems?: ShoppingItem[]) => {
           distanceInterval: 10,
         },
         (location) => {
+          console.log("📍 Location updated");
           setCurrentLocation(location);
-          // Don't call updateGeofences directly here - will be handled by the useEffect below
         }
       );
     };
@@ -149,14 +182,47 @@ export const useTracking = (shoppingItems?: ShoppingItem[]) => {
 
     return () => {
       locationSubscription?.remove();
+      // Clean up debounce timer on unmount
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
     };
   }, [isTracking, startTracking]);
 
-  // Handle location and shopping list changes
+  // Handle location changes - trigger update when location changes significantly
   useEffect(() => {
-    if (currentLocation && isTracking && shoppingItemsRef.current.length > 0) {
-      debouncedUpdateGeofences();
+    if (!currentLocation || !isTracking || !lastCategoriesRef.current) {
+      return;
     }
+
+    // Only trigger if we actually have shopping items with categories
+    if (shoppingItemsRef.current.length === 0) {
+      console.log("🚫 No shopping items, skipping geofence update");
+      return;
+    }
+
+    // Check if location actually changed significantly to avoid rapid-fire updates
+    if (lastLocationRef.current) {
+      const distance = getDistance(
+        lastLocationRef.current.coords.latitude,
+        lastLocationRef.current.coords.longitude,
+        currentLocation.coords.latitude,
+        currentLocation.coords.longitude
+      );
+
+      // Only trigger if moved more than 50 meters
+      if (distance < 50) {
+        console.log("📍 Location change too small, skipping geofence update");
+        return;
+      }
+    }
+
+    lastLocationRef.current = currentLocation;
+    console.log(
+      "📍 Location changed significantly, triggering geofence update"
+    );
+    debouncedUpdateGeofences();
   }, [currentLocation, isTracking, debouncedUpdateGeofences]);
 
   return {

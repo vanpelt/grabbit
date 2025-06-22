@@ -12,6 +12,9 @@ import { Suspense, useEffect, useMemo } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import migrations from "../drizzle/migrations";
 
+// Import the geofence task to ensure it's defined early
+import "../tasks/geofenceTask";
+
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
