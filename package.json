@@ -61,6 +61,7 @@
   "devDependencies": {
     "@anthropic-ai/claude-code": "^1.0.31",
     "@babel/core": "^7.25.2",
+    "@babel/plugin-transform-dynamic-import": "^7.27.1",
     "@testing-library/react-native": "^13.2.0",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.0.10",
@@ -75,6 +76,13 @@
   "private": true,
   "jest": {
     "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/__tests__/mocks.ts"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/__tests__/mocks.ts"
+    ],
     "collectCoverage": true,
     "collectCoverageFrom": [
       "**/*.{ts,tsx,js,jsx}",

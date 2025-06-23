@@ -57,6 +57,14 @@ These instructions will get you a copy of the project up and running on your loc
   pnpm android -d
   ```
 
+### Testing
+
+Unit tests are in `__tests__` and can be run with `pnpm test`. We're also experimenting with Maestro. To install it for E2E tests:
+
+```bash
+curl -L https://get.maestro.mobile.dev | bash
+```
+
 ## Technology Stack
 
 - **Mobile Framework:** Expo (React Native)

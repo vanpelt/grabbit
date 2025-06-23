@@ -1,5 +1,5 @@
 import { getDistance } from "@/utils/location";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/expo-sqlite";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
@@ -70,7 +70,10 @@ export async function handleGeofenceEvent({ data, error }: any) {
 
       // Get current active shopping items
       const currentShoppingItems = await db.query.shoppingItems.findMany({
-        where: eq(schema.shoppingItems.completed, false),
+        where: and(
+          eq(schema.shoppingItems.completed, false),
+          eq(schema.shoppingItems.category, nearbyLocations[0].type)
+        ),
       });
 
       if (currentShoppingItems.length === 0) {
