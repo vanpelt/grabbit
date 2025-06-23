@@ -7,6 +7,7 @@ import {
 } from 'expo-speech-recognition';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
+import logger from '@/utils/logger';
 
 const audioSource = require('../assets/start.mp3');
 
@@ -29,7 +30,7 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions) => {
         clearTimeout(silenceTimeout.current);
       }
       silenceTimeout.current = setTimeout(() => {
-        console.log('Silence timeout, stopping recognition.');
+        logger.log('Silence timeout, stopping recognition.');
         stop();
       }, 5000); // 5 seconds of silence
 
@@ -41,17 +42,17 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions) => {
   );
 
   useSpeechRecognitionEvent('start', () => {
-    console.log('onSpeechStart');
+    logger.log('onSpeechStart');
     setIsRecording(true);
     onStart?.();
     silenceTimeout.current = setTimeout(() => {
-      console.log('Silence timeout, stopping recognition.');
+      logger.log('Silence timeout, stopping recognition.');
       stop();
     }, 5000); // 5 seconds of silence
   });
 
   useSpeechRecognitionEvent('end', () => {
-    console.log('onSpeechEnd');
+    logger.log('onSpeechEnd');
     if (silenceTimeout.current) {
       clearTimeout(silenceTimeout.current);
       silenceTimeout.current = null;
@@ -61,7 +62,7 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions) => {
   });
 
   useSpeechRecognitionEvent('error', (event) => {
-    console.log('onSpeechError: ', event);
+    logger.log('onSpeechError: ', event);
     setIsRecording(false);
     onError?.(event);
     if (silenceTimeout.current) {
@@ -84,7 +85,7 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions) => {
         await player.play();
       }
     } catch (e: any) {
-      console.error(e);
+      logger.error(e);
       Alert.alert('Error starting recognition', e.message);
       onError?.(e);
     }
@@ -99,7 +100,7 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions) => {
       await ExpoSpeechRecognitionModule.stop();
     } catch (e: any) {
        if (e.code !== 'recognizer-not-running') {
-         console.error(e);
+         logger.error(e);
          onError?.(e);
        }
     }
@@ -116,7 +117,7 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions) => {
           // It's possible the stop command fails if recognition is already stopped.
           // We can ignore this error during cleanup.
           if ((error as any).code !== 'recognizer-not-running') {
-            console.error('Error stopping speech recognition during cleanup:', error);
+            logger.error('Error stopping speech recognition during cleanup:', error);
           }
         }
       })();

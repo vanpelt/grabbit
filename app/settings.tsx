@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { Link } from "expo-router";
 import React from "react";
+import logger from "@/utils/logger";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,7 +19,7 @@ const SettingsScreen = () => {
 
   const handleTestNotification = () => {
     const testStoreName = "Safeway Downtown"; // Using a sample store for the test
-    console.log(`[Test] Simulating geofence entry for ${testStoreName}`);
+    logger.log(`[Test] Simulating geofence entry for ${testStoreName}`);
     Notifications.scheduleNotificationAsync({
       content: {
         title: "You are near a store on your list!",
