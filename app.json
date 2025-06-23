@@ -11,8 +11,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.grabbit",
-      "developmentTeam": "QCUUU7QVF7",
-      "deploymentTarget": "15.1",
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone.",

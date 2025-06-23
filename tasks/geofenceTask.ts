@@ -8,8 +8,7 @@ import * as TaskManager from "expo-task-manager";
 
 const GEOFENCE_TASK = "GEOFENCE_TASK";
 
-// Define the geofence task handler early in app initialization
-TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
+export async function handleGeofenceEvent({ data, error }: any) {
   if (error) {
     console.error("❌ [GeofenceTask] error:", error);
     return;
@@ -117,6 +116,9 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
       });
     }
   }
-});
+}
+
+// Define the geofence task handler early in app initialization
+TaskManager.defineTask(GEOFENCE_TASK, handleGeofenceEvent);
 
 export { GEOFENCE_TASK };

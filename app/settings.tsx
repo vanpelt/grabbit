@@ -1,4 +1,5 @@
 import * as Notifications from "expo-notifications";
+import { Link } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
@@ -36,9 +37,19 @@ const SettingsScreen = () => {
         <Text style={styles.settingLabel}>Enable Location Tracking</Text>
         <Switch value={isTracking} onValueChange={toggleTracking} />
       </View>
-      <TouchableOpacity style={styles.button} onPress={handleTestNotification}>
-        <Text style={styles.buttonText}>Test Notification</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleTestNotification}
+        >
+          <Text style={styles.buttonText}>Test Notification</Text>
+        </TouchableOpacity>
+        <Link href="/developer" asChild>
+          <TouchableOpacity style={styles.button}>
+            <Text style={styles.buttonText}>Developer Tools</Text>
+          </TouchableOpacity>
+        </Link>
+      </View>
       <View style={styles.geofenceContainer}>
         <Text style={styles.geofenceTitle}>Active Geofences</Text>
         {isLoading ? (
@@ -85,12 +96,17 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 16,
   },
+  buttonContainer: {
+    flexDirection: "row",
+    gap: 10,
+  },
   button: {
     backgroundColor: "#3498db",
     padding: 15,
     alignItems: "center",
     borderRadius: 8,
     marginTop: 10,
+    flex: 1,
   },
   buttonText: {
     color: "#fff",
