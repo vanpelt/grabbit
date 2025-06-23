@@ -141,6 +141,9 @@ importers:
       '@types/react':
         specifier: ~19.0.10
         version: 19.0.14
+      babel-plugin-dynamic-import-node:
+        specifier: ^2.3.3
+        version: 2.3.3
       babel-plugin-inline-import:
         specifier: ^3.0.0
         version: 3.0.0
@@ -1953,6 +1956,9 @@ packages:
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     peerDependencies:
       '@babel/core': ^7.8.0
+
+  babel-plugin-dynamic-import-node@2.3.3:
+    resolution: {integrity: sha512-jZVI+s9Zg3IqA/kdi0i6UDCybUI3aSBLnglhYbSSjKlV7yF1F/5LWv8MakQmvYpnbJDS6fcBL2KzHSxNCMtWSQ==}
 
   babel-plugin-inline-import@3.0.0:
     resolution: {integrity: sha512-thnykl4FMb8QjMjVCuZoUmAM7r2mnTn5qJwrryCvDv6rugbJlTHZMctdjDtEgD0WBAXJOLJSGXN3loooEwx7UQ==}
@@ -7482,6 +7488,10 @@ snapshots:
       slash: 3.0.0
     transitivePeerDependencies:
       - supports-color
+
+  babel-plugin-dynamic-import-node@2.3.3:
+    dependencies:
+      object.assign: 4.1.7
 
   babel-plugin-inline-import@3.0.0:
     dependencies:
