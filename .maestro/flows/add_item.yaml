@@ -1,0 +1,24 @@
+appId: com.anonymous.grabbit
+---
+- launchApp:
+    clearState: true
+
+# Handle iOS permission dialogs
+- extendedWaitUntil:
+    visible: "Allow While Using App"
+    timeout: 5000
+- tapOn: "Allow While Using App"
+- extendedWaitUntil:
+    visible: "Allow"
+    timeout: 5000
+- tapOn: "Allow"
+
+# Add a new shopping item
+- tapOn:
+    text: "Add shopping item (e.g., milk, batteries)"
+- inputText: "Buy milk"
+- tapOn: "+"
+- assertVisible: "Buy milk"
+
+# Clean up
+- stopApp
