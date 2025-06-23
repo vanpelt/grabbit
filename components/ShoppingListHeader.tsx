@@ -67,6 +67,7 @@ export const ShoppingListHeader = React.memo(
     );
   }
 );
+ShoppingListHeader.displayName = "ShoppingListHeader";
 
 const styles = StyleSheet.create({
   h2: {

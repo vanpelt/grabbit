@@ -4,6 +4,7 @@ import { useShoppingList } from "@/hooks/useShoppingList";
 import { getDistance } from "@/utils/location";
 import { inArray } from "drizzle-orm";
 import * as Location from "expo-location";
+import logger from "@/utils/logger";
 import React, {
   createContext,
   useCallback,
@@ -76,7 +77,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Only update if categories actually changed
     if (categoriesKey !== lastCategoriesRef.current) {
-      console.log("🔄 Categories changed:", categoriesKey);
+      logger.log("🔄 Categories changed:", categoriesKey);
       shoppingItemsRef.current = shoppingItems;
       lastCategoriesRef.current = categoriesKey;
 
@@ -90,7 +91,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
   const updateGeofences = useCallback(async () => {
     // Prevent concurrent executions
     if (updateInProgressRef.current || !currentLocation || !db) {
-      console.log("🚫 Skipping updateGeofences:", {
+      logger.log("🚫 Skipping updateGeofences:", {
         updateInProgress: updateInProgressRef.current,
         hasLocation: !!currentLocation,
         hasDb: !!db,
@@ -100,7 +101,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
 
     try {
       updateInProgressRef.current = true;
-      console.log("🔄 Starting updateGeofences");
+      logger.log("🔄 Starting updateGeofences");
 
       const hasGeofences = await Location.hasStartedGeofencingAsync(
         GEOFENCE_TASK
@@ -115,12 +116,12 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
         ),
       ];
       if (categories.length === 0) {
-        console.log("🚫 No categories to track");
+        logger.log("🚫 No categories to track");
         setGeofencedStores([]);
         return;
       }
 
-      console.log("📍 Updating stores for categories:", categories);
+      logger.log("📍 Updating stores for categories:", categories);
       await updateNearbyStores(categories, currentLocation);
 
       const allStoresForCategories = await db.query.locations.findMany({
@@ -128,7 +129,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       if (allStoresForCategories.length === 0) {
-        console.log("🚫 No stores found for categories");
+        logger.log("🚫 No stores found for categories");
         setGeofencedStores([]);
         return;
       }
@@ -148,7 +149,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
       const nearbyStores = allStoresWithDistance.slice(0, 20);
 
       if (nearbyStores.length === 0) {
-        console.log("🚫 No nearby stores");
+        logger.log("🚫 No nearby stores");
         setGeofencedStores([]);
         return;
       }
@@ -164,9 +165,9 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
 
       await Location.startGeofencingAsync(GEOFENCE_TASK, geofenceRegions);
       setGeofencedStores(nearbyStores);
-      console.log("✅ Geofences updated successfully");
+      logger.log("✅ Geofences updated successfully");
     } catch (error) {
-      console.error("❌ Error updating geofences:", error);
+      logger.error("❌ Error updating geofences:", error);
     } finally {
       updateInProgressRef.current = false;
       setIsLoading(false);
@@ -196,7 +197,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
     let { status: backgroundStatus } =
       await Location.requestBackgroundPermissionsAsync();
     if (backgroundStatus !== "granted") {
-      console.log(
+      logger.log(
         "Permission to access background location was denied. Proceeding with foreground tracking only."
       );
     }
@@ -216,7 +217,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
           distanceInterval: 10,
         },
         (location) => {
-          console.log("📍 Location updated");
+          logger.log("📍 Location updated");
           setCurrentLocation(location);
         }
       );
@@ -245,7 +246,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Only trigger if we actually have shopping items with categories
     if (shoppingItemsRef.current.length === 0) {
-      console.log("🚫 No shopping items, skipping geofence update");
+      logger.log("🚫 No shopping items, skipping geofence update");
       return;
     }
 
@@ -260,13 +261,13 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Only trigger if moved more than 50 meters
       if (distance < 50) {
-        console.log("📍 Location change too small, skipping geofence update");
+        logger.log("📍 Location change too small, skipping geofence update");
         return;
       }
     }
 
     lastLocationRef.current = currentLocation;
-    console.log(
+      logger.log(
       "📍 Location changed significantly, triggering geofence update"
     );
     debouncedUpdateGeofences();

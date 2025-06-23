@@ -26,6 +26,7 @@ import {
   Text,
 } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
+import logger from "@/utils/logger";
 const NOTIFICATION_CHANNEL_ID = "geofence-notifications";
 
 async function setupNotifications() {
@@ -59,7 +60,7 @@ async function setupNotifications() {
 
 const App = () => {
   const { shoppingItems, addItem, removeItem, updateItem } = useShoppingList();
-  const { isTracking, currentLocation } = useTracking();
+  const { currentLocation } = useTracking();
 
   const [newItemName, setNewItemName] = useState("");
   const pulseAnimation = useRef(new Animated.Value(1)).current;
@@ -197,7 +198,7 @@ const App = () => {
   const classifier = useShoppingClassifier();
   useEffect(() => {
     if (classifier.ready) {
-      console.log("Classifier is ready, running test classifications...");
+      logger.log("Classifier is ready, running test classifications...");
       const testItems = [
         "milk",
         "batteries",
@@ -212,19 +213,19 @@ const App = () => {
         // Handle cases where the model isn't ready and we get a promise
         if (asyncResult) {
           asyncResult.then((result) => {
-            console.log(
+            logger.log(
               `[Classifier Test] (Async) "${item}" -> "${result.primaryCategory.name}"`
             );
           });
         } else {
           // Handle immediate results from keyword search
-          console.log(
+          logger.log(
             `[Classifier Test] (Sync) "${item}" -> "${syncResult.primaryCategory.name}"`
           );
         }
       });
     }
-  }, [classifier.ready, classifier.classify]);
+  }, [classifier, classifier.ready, classifier.classify]);
 
   // --- Geolocation Effects and Handlers ---
   useEffect(() => {

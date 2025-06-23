@@ -5,6 +5,7 @@ import { getDistance } from "@/utils/location";
 import * as Location from "expo-location";
 import Storage from "expo-sqlite/kv-store";
 import { useRef } from "react";
+import logger from "@/utils/logger";
 
 const MAPBOX_API_KEY = process.env.MAPBOX_API_KEY;
 
@@ -27,7 +28,7 @@ export function useStoreManager() {
 
     // Check if we're over the limit
     if (requestTimestampsRef.current.length >= MAX_REQUESTS_PER_SECOND) {
-      console.warn(
+      logger.warn(
         `⚠️ RATE LIMIT EXCEEDED: More than ${MAX_REQUESTS_PER_SECOND} MapBox API requests per second! Request dropped to avoid excessive charges.`
       );
       return true;
@@ -43,12 +44,12 @@ export function useStoreManager() {
     currentLocation: Location.LocationObject
   ) => {
     if (!db) {
-      console.log("🚫 useStoreManager: db is not available, returning.");
+      logger.log("🚫 useStoreManager: db is not available, returning.");
       return;
     }
 
     if (!categories || categories.length === 0) {
-      console.log("🚫 useStoreManager: no categories provided, returning.");
+      logger.log("🚫 useStoreManager: no categories provided, returning.");
       return;
     }
 
@@ -60,7 +61,7 @@ export function useStoreManager() {
     )},${currentLocation.coords.longitude.toFixed(4)}`;
 
     if (activeRequestsRef.current.has(requestKey)) {
-      console.log(
+      logger.log(
         "🚫 useStoreManager: identical request already in progress, skipping:",
         requestKey
       );
@@ -104,7 +105,7 @@ export function useStoreManager() {
           JSON.stringify(lastUpdateCategories.sort());
 
         if (distanceMiles < 1 && timeDiffHours < 24 && !categoriesChanged) {
-          console.log(
+          logger.log(
             "⏭️ Skipping update: location nearby, updated recently, and categories unchanged."
           );
           return;
@@ -115,7 +116,7 @@ export function useStoreManager() {
           timeDiffHours * 60 < 5 &&
           !categoriesChanged
         ) {
-          console.log(
+          logger.log(
             "⏭️ Skipping update: location changed but updated too recently and categories unchanged."
           );
           return;
@@ -127,7 +128,7 @@ export function useStoreManager() {
         return;
       }
 
-      console.log(
+      logger.log(
         "🔄 Updating nearby stores for categories:",
         categories,
         "at location:",
@@ -141,7 +142,7 @@ export function useStoreManager() {
       );
 
       if (mapboxCategories.length === 0) {
-        console.log(
+        logger.log(
           "🚫 useStoreManager: no mapbox categories found for given item categories, returning.",
           categories
         );
@@ -150,14 +151,14 @@ export function useStoreManager() {
 
       const uniqueMapboxCategories = [...new Set(mapboxCategories)];
 
-      console.log("🔍 Fetching for mapbox categories:", uniqueMapboxCategories);
+      logger.log("🔍 Fetching for mapbox categories:", uniqueMapboxCategories);
 
       const allNewLocations: (typeof locations.$inferInsert)[] = [];
 
       for (const mapboxCategory of uniqueMapboxCategories) {
         // Check rate limiting before each API call
         if (isRateLimited()) {
-          console.log("🚫 Breaking out of category loop due to rate limiting");
+          logger.log("🚫 Breaking out of category loop due to rate limiting");
           break;
         }
 
@@ -181,7 +182,7 @@ export function useStoreManager() {
             }));
             allNewLocations.push(...newLocations);
           } else {
-            console.log(
+            logger.log(
               "🚫 useStoreManager: no ourCategory found for mapboxCategory",
               mapboxCategory
             );
@@ -195,7 +196,7 @@ export function useStoreManager() {
             .insert(locations)
             .values(allNewLocations)
             .onConflictDoNothing();
-          console.log(`✅ Inserted ${allNewLocations.length} new locations.`);
+          logger.log(`✅ Inserted ${allNewLocations.length} new locations.`);
           await Storage.setItem("lastUpdateTimestamp", String(now));
           await Storage.setItem(
             "lastUpdateLocation",
@@ -206,7 +207,7 @@ export function useStoreManager() {
             JSON.stringify(categories)
           );
         } catch (e) {
-          console.error("❌ Error inserting locations", e);
+          logger.error("❌ Error inserting locations", e);
         }
       }
     } finally {

@@ -3,6 +3,7 @@ import { locations } from "@/db/schema";
 import { handleGeofenceEvent } from "@/tasks/geofenceTask";
 import * as Location from "expo-location";
 import { Stack } from "expo-router";
+import logger from "@/utils/logger";
 import {
   ScrollView,
   StyleSheet,
@@ -16,7 +17,7 @@ export default function DeveloperScreen() {
   const allLocations = db.select().from(locations).all();
 
   const onSimulateGeofence = (location: typeof locations.$inferSelect) => {
-    console.log("Simulating geofence for", location.name);
+    logger.log("Simulating geofence for", location.name);
     const mockData = {
       eventType: Location.GeofencingEventType.Enter,
       region: {

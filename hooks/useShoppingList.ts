@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Store } from "../data/stores";
 import { ShoppingItem as ShoppingItemWithCategories } from "../utils/shoppingCategories";
 import { useStoreManager } from "./useStoreManager";
+import logger from "@/utils/logger";
 
 export type ShoppingItem = ShoppingItemWithCategories;
 
@@ -45,7 +46,7 @@ export const useShoppingList = () => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        console.error("Permission to access location was denied");
+        logger.error("Permission to access location was denied");
         return;
       }
 
@@ -82,12 +83,12 @@ export const useShoppingList = () => {
     async (name: string): Promise<string | null> => {
       // Use the ref to get the latest classifier state.
       if (!classifierRef.current.ready) {
-        console.warn("Classifier not ready");
+        logger.warn("Classifier not ready");
         return null;
       }
 
       const { syncResult, asyncResult } = classifierRef.current.classify(name);
-      console.log("syncResult", syncResult.primaryCategory.name);
+      logger.log("syncResult", syncResult.primaryCategory.name);
 
       const [newItemFromDb] = await db
         .insert(shoppingItems)
@@ -103,7 +104,7 @@ export const useShoppingList = () => {
       // If there's an async result, update the item when it resolves.
       if (asyncResult) {
         asyncResult.then((result) => {
-          console.log("asyncResult", result.primaryCategory.name);
+          logger.log("asyncResult", result.primaryCategory.name);
           updateItem(newItem.id, {
             primaryCategory: result.primaryCategory,
           });

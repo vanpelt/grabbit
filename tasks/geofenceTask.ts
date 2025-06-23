@@ -5,12 +5,13 @@ import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import { openDatabaseSync } from "expo-sqlite";
 import * as TaskManager from "expo-task-manager";
+import logger from "@/utils/logger";
 
 const GEOFENCE_TASK = "GEOFENCE_TASK";
 
 export async function handleGeofenceEvent({ data, error }: any) {
   if (error) {
-    console.error("❌ [GeofenceTask] error:", error);
+    logger.error("❌ [GeofenceTask] error:", error);
     return;
   }
 
@@ -33,7 +34,7 @@ export async function handleGeofenceEvent({ data, error }: any) {
       return;
     }
 
-    console.log(`🏪 ${action} geofence at:`, region.latitude, region.longitude);
+    logger.log(`🏪 ${action} geofence at:`, region.latitude, region.longitude);
 
     try {
       // Import schema for database access
@@ -59,11 +60,11 @@ export async function handleGeofenceEvent({ data, error }: any) {
       });
 
       if (nearbyLocations.length === 0) {
-        console.log("🚫 No database locations found within 50m of geofence");
+        logger.log("🚫 No database locations found within 50m of geofence");
         return;
       }
 
-      console.log(
+      logger.log(
         `📍 Found ${nearbyLocations.length} nearby locations:`,
         nearbyLocations.map((l) => `${l.name} (${l.type})`)
       );
@@ -77,7 +78,7 @@ export async function handleGeofenceEvent({ data, error }: any) {
       });
 
       if (currentShoppingItems.length === 0) {
-        console.log("🚫 No active shopping items");
+        logger.log("🚫 No active shopping items");
         return;
       }
 
@@ -86,7 +87,7 @@ export async function handleGeofenceEvent({ data, error }: any) {
       const nearbyStoreNames = nearbyLocations.map((l) => l.name).join(", ");
       const itemCount = currentShoppingItems.length;
 
-      console.log(
+      logger.log(
         "📱 Sending geofence notification for nearby stores:",
         nearbyStoreNames
       );
@@ -104,7 +105,7 @@ export async function handleGeofenceEvent({ data, error }: any) {
         trigger: null, // trigger immediately
       });
     } catch (dbError) {
-      console.error("❌ Database error in geofence task:", dbError);
+      logger.error("❌ Database error in geofence task:", dbError);
 
       // Fallback: send basic notification
       await Notifications.scheduleNotificationAsync({
