@@ -56,9 +56,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/grabbit_splash.jpg",
-          "resizeMode": "contain",
-          "backgroundColor": "#6933F2"
+          "image": "./assets/images/adaptive-icon.png",
+          "imageWidth": 400,
+          "resizeMode": "cover",
+          "backgroundColor": "#702EFB"
         }
       ],
       "expo-audio",
