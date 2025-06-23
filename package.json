@@ -13,7 +13,7 @@
     "clean:ios": "expo prebuild --clean --platform ios",
     "doctor": "cross-env pnpm eas --help &&pnpm dlx expo-doctor",
     "eas": "cross-env EAS_TOKEN=$EAS_TOKEN pnpm dlx eas-cli",
-    "pull-env": "pnpm eas env:pull --environment development",
+    "pull-env": "cross-env pnpm eas env:pull --environment development",
     "whoami": "cross-env pnpm eas whoami",
     "web": "expo start --web",
     "lint": "expo lint",
