@@ -1,3 +1,4 @@
+import { ShoppingListProvider } from "@/contexts/ShoppingListContext";
 import { DbContext } from "@/db";
 import * as schema from "@/db/schema";
 import { Ionicons } from "@expo/vector-icons";
@@ -80,9 +81,11 @@ function MainLayout() {
 
   return (
     <DbContext.Provider value={db}>
-      <TrackingProvider>
-        <RootLayoutNav />
-      </TrackingProvider>
+      <ShoppingListProvider>
+        <TrackingProvider>
+          <RootLayoutNav />
+        </TrackingProvider>
+      </ShoppingListProvider>
     </DbContext.Provider>
   );
 }

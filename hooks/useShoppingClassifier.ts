@@ -1,11 +1,11 @@
 // useShoppingClassifier.ts
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { InferenceSession, Tensor } from "onnxruntime-react-native";
 import { Asset } from "expo-asset";
+import { InferenceSession, Tensor } from "onnxruntime-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import tokenizerJson from "../assets/models/tokenizer.json";
-const MODEL_ASSET = require("../assets/models/multi-qa-MiniLM-L6-cos-v1.onnx");
 import { keywordCategorize } from "../utils/keywordCategorizer";
 import { CATEGORIES, ItemCategory } from "../utils/shoppingCategories";
+const MODEL_ASSET = require("../assets/models/multi-qa-MiniLM-L6-cos-v1.onnx");
 // Directly import the JSON data. Webpack/Metro will parse this for us.
 import categoryVectors from "../assets/data/category_vectors.json";
 
@@ -88,16 +88,14 @@ function useOnnxEmbeddings() {
         BigInt64Array.from(arr.map((v) => BigInt(v)));
       const feeds = {
         input_ids: new Tensor("int64", toBigInt64(inputIds), [1, MAX_LENGTH]),
-        attention_mask: new Tensor(
-          "int64",
-          toBigInt64(attentionMask),
-          [1, MAX_LENGTH]
-        ),
-        token_type_ids: new Tensor(
-          "int64",
-          toBigInt64(tokenTypeIds),
-          [1, MAX_LENGTH]
-        ),
+        attention_mask: new Tensor("int64", toBigInt64(attentionMask), [
+          1,
+          MAX_LENGTH,
+        ]),
+        token_type_ids: new Tensor("int64", toBigInt64(tokenTypeIds), [
+          1,
+          MAX_LENGTH,
+        ]),
       } as const;
       const output = await session.run(feeds);
       const embedding = output.sentence_embedding.data as Float32Array;

@@ -1,10 +1,9 @@
 import { useDb } from "@/db";
 import { locations } from "@/db/schema";
-import { useShoppingList } from "@/hooks/useShoppingList";
 import { getDistance } from "@/utils/location";
+import logger from "@/utils/logger";
 import { inArray } from "drizzle-orm";
 import * as Location from "expo-location";
-import logger from "@/utils/logger";
 import React, {
   createContext,
   useCallback,
@@ -14,6 +13,7 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
+import { useShoppingList } from "../hooks/useShoppingList";
 import { useStoreManager } from "../hooks/useStoreManager";
 
 const GEOFENCE_TASK = "GEOFENCE_TASK";
@@ -74,6 +74,13 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
       ...new Set(shoppingItems.map((item) => item.primaryCategory.id)),
     ].sort();
     const categoriesKey = categories.join(",");
+
+    logger.log(
+      "[TrackingContext] Effect run: previous categories:",
+      lastCategoriesRef.current,
+      "new categories:",
+      categoriesKey
+    );
 
     // Only update if categories actually changed
     if (categoriesKey !== lastCategoriesRef.current) {
@@ -267,9 +274,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     lastLocationRef.current = currentLocation;
-      logger.log(
-      "📍 Location changed significantly, triggering geofence update"
-    );
+    logger.log("📍 Location changed significantly, triggering geofence update");
     debouncedUpdateGeofences();
   }, [currentLocation, isTracking, debouncedUpdateGeofences]);
 
