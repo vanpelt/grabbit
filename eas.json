@@ -6,17 +6,20 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "ios": {
-        "simulator": true
-      }
+      "distribution": "internal"
     },
     "preview": {
       "distribution": "internal"
     },
     "simulator": {
+      "developmentClient": true,
       "ios": {
         "simulator": true
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug",
+        "image": "latest"
       }
     },
     "production": {
