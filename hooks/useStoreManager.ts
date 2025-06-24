@@ -163,11 +163,11 @@ export function useStoreManager() {
           break;
         }
 
-        console.log(
-          "Fetching for mapbox category",
-          mapboxCategory,
-          MAPBOX_API_KEY?.slice(0, 4)
-        );
+        if (!MAPBOX_API_KEY) {
+          logger.warn("❌ MAPBOX_API_KEY is not set, skipping fetch");
+          break;
+        }
+
         const response = await fetch(
           `https://api.mapbox.com/search/searchbox/v1/category/${mapboxCategory}?access_token=${MAPBOX_API_KEY}&proximity=${currentLocation.coords.longitude},${currentLocation.coords.latitude}`
         );
