@@ -1,9 +1,9 @@
 import { useDb } from "@/db";
 import { locations } from "@/db/schema";
 import { handleGeofenceEvent } from "@/tasks/geofenceTask";
+import logger from "@/utils/logger";
 import * as Location from "expo-location";
 import { Stack } from "expo-router";
-import logger from "@/utils/logger";
 import {
   ScrollView,
   StyleSheet,

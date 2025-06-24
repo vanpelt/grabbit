@@ -2,12 +2,13 @@ import { storeMapping } from "@/data/stores";
 import { useDb } from "@/db";
 import { locations } from "@/db/schema";
 import { getDistance } from "@/utils/location";
+import logger from "@/utils/logger";
+import Constants from "expo-constants";
 import * as Location from "expo-location";
 import Storage from "expo-sqlite/kv-store";
 import { useRef } from "react";
-import logger from "@/utils/logger";
 
-const MAPBOX_API_KEY = process.env.MAPBOX_API_KEY;
+const MAPBOX_API_KEY = Constants.expoConfig?.extra?.MAPBOX_API_KEY;
 
 // Rate limiting configuration
 const MAX_REQUESTS_PER_SECOND = 10;
@@ -159,6 +160,11 @@ export function useStoreManager() {
         // Check rate limiting before each API call
         if (isRateLimited()) {
           logger.log("🚫 Breaking out of category loop due to rate limiting");
+          break;
+        }
+
+        if (!MAPBOX_API_KEY) {
+          logger.warn("❌ MAPBOX_API_KEY is not set, skipping fetch");
           break;
         }
 

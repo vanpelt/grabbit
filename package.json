@@ -51,7 +51,6 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.4",
-    "react-native-executorch": "^0.4.5",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-reanimated": "~3.17.4",
@@ -64,6 +63,7 @@
     "@anthropic-ai/claude-code": "^1.0.31",
     "@babel/core": "^7.25.2",
     "@babel/plugin-transform-dynamic-import": "^7.27.1",
+    "@libsql/client": "^0.15.9",
     "@testing-library/react-native": "^13.2.0",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.0.10",
@@ -81,12 +81,14 @@
   "jest": {
     "preset": "jest-expo",
     "setupFilesAfterEnv": [
-      "<rootDir>/__tests__/mocks.ts"
+      "<rootDir>/__mocks__/setup.ts"
     ],
     "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/__tests__/mocks.ts"
+      "/node_modules/"
     ],
+    "moduleNameMapper": {
+      "\\.(onnx)$": "<rootDir>/__mocks__/fileMock.js"
+    },
     "collectCoverage": false,
     "collectCoverageFrom": [
       "**/*.{ts,tsx,js,jsx}",
