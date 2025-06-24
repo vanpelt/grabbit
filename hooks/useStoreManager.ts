@@ -2,12 +2,13 @@ import { storeMapping } from "@/data/stores";
 import { useDb } from "@/db";
 import { locations } from "@/db/schema";
 import { getDistance } from "@/utils/location";
+import logger from "@/utils/logger";
+import Constants from "expo-constants";
 import * as Location from "expo-location";
 import Storage from "expo-sqlite/kv-store";
 import { useRef } from "react";
-import logger from "@/utils/logger";
 
-const MAPBOX_API_KEY = process.env.MAPBOX_API_KEY;
+const MAPBOX_API_KEY = Constants.expoConfig?.extra?.MAPBOX_API_KEY;
 
 // Rate limiting configuration
 const MAX_REQUESTS_PER_SECOND = 10;
@@ -162,6 +163,11 @@ export function useStoreManager() {
           break;
         }
 
+        console.log(
+          "Fetching for mapbox category",
+          mapboxCategory,
+          MAPBOX_API_KEY?.slice(0, 4)
+        );
         const response = await fetch(
           `https://api.mapbox.com/search/searchbox/v1/category/${mapboxCategory}?access_token=${MAPBOX_API_KEY}&proximity=${currentLocation.coords.longitude},${currentLocation.coords.latitude}`
         );

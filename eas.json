@@ -12,7 +12,9 @@
       }
     },
     "preview": {
-      "distribution": "internal",
+      "distribution": "internal"
+    },
+    "simulator": {
       "ios": {
         "simulator": true
       }
