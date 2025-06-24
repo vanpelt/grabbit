@@ -162,7 +162,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const geofenceRegions = nearbyStores.map((store) => ({
-        identifier: store.name,
+        identifier: String(store.id),
         latitude: store.lat,
         longitude: store.lng,
         radius: 100,
