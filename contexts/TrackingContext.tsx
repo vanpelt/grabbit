@@ -90,7 +90,7 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Trigger update when categories change
       if (currentLocation && isTracking) {
-        debouncedUpdateGeofences();
+        updateGeofences();
       }
     }
   }, [shoppingItems, currentLocation, isTracking]);
@@ -275,8 +275,9 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({
 
     lastLocationRef.current = currentLocation;
     logger.log("📍 Location changed significantly, triggering geofence update");
-    debouncedUpdateGeofences();
-  }, [currentLocation, isTracking, debouncedUpdateGeofences]);
+    // TODO: do we need to debounce this?
+    updateGeofences();
+  }, [currentLocation, isTracking, updateGeofences]);
 
   const value = {
     isTracking,

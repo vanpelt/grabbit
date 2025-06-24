@@ -68,7 +68,7 @@ async function classifyAndUpdateItemImpl(
   const { id, name, category, completed } = params;
   let primaryCategoryId = category;
   let syncResult, asyncResult;
-  if (name && classifierRef.current.ready) {
+  if (name) {
     ({ syncResult, asyncResult } = classifierRef.current.classify(name));
     logger.log(
       "Basic category classification",
@@ -103,6 +103,10 @@ async function classifyAndUpdateItemImpl(
   if (asyncResult && (!id ? dbResult : id)) {
     asyncResult.then(async (result: any) => {
       logger.log("AI category classification", result.primaryCategory.name);
+      if (result.primaryCategory.id === "unknown") {
+        logger.warn("Not updating item with unknown category");
+        return;
+      }
       const itemId = !id ? dbResult.id : id;
       await db
         .update(shoppingItems)

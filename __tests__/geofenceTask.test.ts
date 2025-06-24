@@ -14,6 +14,12 @@ const mockDb = {
   },
 };
 
+jest.mock("@/db/schema", () => ({
+  shoppingItems: {
+    completed: "completed",
+  },
+}));
+
 describe("handleGeofenceEvent", () => {
   beforeEach(() => {
     jest.clearAllMocks();

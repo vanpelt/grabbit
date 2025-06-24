@@ -6,16 +6,6 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-export const settings = sqliteTable(
-  "settings",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    key: text("key").notNull(),
-    value: text("value"),
-  },
-  (table) => [uniqueIndex("key_idx").on(table.key)]
-);
-
 export const shoppingItems = sqliteTable("shopping_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -36,9 +26,5 @@ export const locations = sqliteTable(
     type: text("type").notNull(),
     mapboxId: text("mapbox_id").notNull(),
   },
-  (locations) => {
-    return {
-      mapboxIdIndex: uniqueIndex("mapbox_id_index").on(locations.mapboxId),
-    };
-  }
+  (table) => [uniqueIndex("mapbox_id_index").on(table.mapboxId)]
 );
