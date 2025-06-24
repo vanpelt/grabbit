@@ -69,11 +69,17 @@ export async function handleGeofenceEvent({ data, error }: any) {
         nearbyLocations.map((l) => `${l.name} (${l.type})`)
       );
 
-      // Get current active shopping items
+      const triggeredLocation = allLocations.find(
+        (loc) => String(loc.id) === region.identifier
+      );
+
+      const storeForNotification = triggeredLocation ?? nearbyLocations[0];
+
+      // Get current active shopping items for this store's type
       const currentShoppingItems = await db.query.shoppingItems.findMany({
         where: and(
           eq(schema.shoppingItems.completed, false),
-          eq(schema.shoppingItems.category, nearbyLocations[0].type)
+          eq(schema.shoppingItems.category, storeForNotification.type)
         ),
       });
 
@@ -84,20 +90,22 @@ export async function handleGeofenceEvent({ data, error }: any) {
 
       // For now, send notification if we have any nearby stores and active items
       // TODO: Add proper category matching between shopping items and store types
-      const nearbyStoreNames = nearbyLocations.map((l) => l.name).join(", ");
       const itemCount = currentShoppingItems.length;
 
       logger.log(
-        "📱 Sending geofence notification for nearby stores:",
-        nearbyStoreNames
+        "📱 Sending geofence notification for store:",
+        storeForNotification.name,
+        "with",
+        itemCount,
+        "items"
       );
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "You are near a store on your list!",
-          body: `You are near ${nearbyStoreNames}. You have ${itemCount} item${
+          title: storeForNotification.name,
+          body: `may have ${itemCount} item${
             itemCount === 1 ? "" : "s"
-          } to buy.`,
+          } in your list, Grabbit!`,
           sound: "default",
           vibrate: [0, 250, 250, 250],
           priority: Notifications.AndroidNotificationPriority.HIGH,

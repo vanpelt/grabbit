@@ -21,7 +21,7 @@ export default function DeveloperScreen() {
     const mockData = {
       eventType: Location.GeofencingEventType.Enter,
       region: {
-        identifier: location.id,
+        identifier: String(location.id),
         radius: 100,
         latitude: location.lat,
         longitude: location.lng,
