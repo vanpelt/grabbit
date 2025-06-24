@@ -1,9 +1,11 @@
+import { ShoppingListProvider } from "@/contexts/ShoppingListContext";
 import { DbContext } from "@/db";
 import * as schema from "@/db/schema";
 import { Ionicons } from "@expo/vector-icons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { drizzle } from "drizzle-orm/expo-sqlite";
 import { migrate } from "drizzle-orm/expo-sqlite/migrator";
+import * as FileSystem from "expo-file-system";
 import { useFonts } from "expo-font";
 import { SplashScreen, Stack, router } from "expo-router";
 import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
@@ -29,10 +31,28 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+async function resetDb() {
+  const dbPath = FileSystem.documentDirectory + "SQLite/grabbit.db";
+  try {
+    await FileSystem.deleteAsync(dbPath, { idempotent: true });
+    console.log("Database deleted");
+  } catch (e) {
+    console.error("Error deleting DB:", e);
+  }
+}
+
 async function onInit(db: SQLiteDatabase) {
   await db.execAsync("PRAGMA journal_mode = WAL;");
   // The `drizzle(db)` without schema is fine for migrations
-  await migrate(drizzle(db), migrations);
+  try {
+    await migrate(drizzle(db), migrations);
+  } catch (e) {
+    console.error("Error migrating DB:", e);
+    if (__DEV__) {
+      console.log("Resetting DB, reload the app");
+      await resetDb();
+    }
+  }
 }
 
 export default function RootLayout() {
@@ -80,9 +100,11 @@ function MainLayout() {
 
   return (
     <DbContext.Provider value={db}>
-      <TrackingProvider>
-        <RootLayoutNav />
-      </TrackingProvider>
+      <ShoppingListProvider>
+        <TrackingProvider>
+          <RootLayoutNav />
+        </TrackingProvider>
+      </ShoppingListProvider>
     </DbContext.Provider>
   );
 }

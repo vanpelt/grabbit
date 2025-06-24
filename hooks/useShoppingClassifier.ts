@@ -1,12 +1,11 @@
 // useShoppingClassifier.ts
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import {
-  MULTI_QA_MINILM_L6_COS_V1,
-  MULTI_QA_MINILM_L6_COS_V1_TOKENIZER,
-  useTextEmbeddings,
-} from "react-native-executorch";
+import { Asset } from "expo-asset";
+import { InferenceSession, Tensor } from "onnxruntime-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import tokenizerJson from "../assets/models/tokenizer.json";
 import { keywordCategorize } from "../utils/keywordCategorizer";
 import { CATEGORIES, ItemCategory } from "../utils/shoppingCategories";
+const MODEL_ASSET = require("../assets/models/multi-qa-MiniLM-L6-cos-v1.onnx");
 // Directly import the JSON data. Webpack/Metro will parse this for us.
 import categoryVectors from "../assets/data/category_vectors.json";
 
@@ -17,6 +16,96 @@ const UNKNOWN_CATEGORY = CATEGORIES.find(
 type CategoryVector = {
   [key: string]: number[];
 };
+
+const vocab = (tokenizerJson as any).model.vocab as Record<string, number>;
+const MAX_LENGTH = (tokenizerJson as any).truncation?.max_length ?? 250;
+const PAD_ID = vocab["[PAD]"];
+const CLS_ID = vocab["[CLS]"];
+const SEP_ID = vocab["[SEP]"];
+const UNK_ID = vocab["[UNK]"];
+
+function wordpieceTokenize(word: string): number[] {
+  const tokens: number[] = [];
+  let start = 0;
+  while (start < word.length) {
+    let end = word.length;
+    let curr: number | null = null;
+    while (start < end) {
+      let substr = word.slice(start, end);
+      if (start > 0) substr = "##" + substr;
+      if (vocab[substr] !== undefined) {
+        curr = vocab[substr];
+        break;
+      }
+      end -= 1;
+    }
+    if (curr === null) {
+      tokens.push(UNK_ID);
+      break;
+    } else {
+      tokens.push(curr);
+      start = end;
+    }
+  }
+  return tokens;
+}
+
+function encode(text: string) {
+  const words = text.toLowerCase().trim().split(/\s+/g);
+  let ids: number[] = [CLS_ID];
+  for (const w of words) ids.push(...wordpieceTokenize(w));
+  ids.push(SEP_ID);
+  ids = ids.slice(0, MAX_LENGTH);
+  const attention = new Array(ids.length).fill(1);
+  while (ids.length < MAX_LENGTH) {
+    ids.push(PAD_ID);
+    attention.push(0);
+  }
+  const typeIds = new Array(MAX_LENGTH).fill(0);
+  return { inputIds: ids, attentionMask: attention, tokenTypeIds: typeIds };
+}
+
+function useOnnxEmbeddings() {
+  const [session, setSession] = useState<InferenceSession | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const asset = Asset.fromModule(MODEL_ASSET);
+      await asset.downloadAsync();
+      const uri = asset.localUri || asset.uri;
+      const s = await InferenceSession.create(uri);
+      setSession(s);
+    })();
+  }, []);
+
+  const forward = useCallback(
+    async (text: string): Promise<number[]> => {
+      if (!session) {
+        return [];
+      }
+      const { inputIds, attentionMask, tokenTypeIds } = encode(text);
+      const toBigInt64 = (arr: number[]) =>
+        BigInt64Array.from(arr.map((v) => BigInt(v)));
+      const feeds = {
+        input_ids: new Tensor("int64", toBigInt64(inputIds), [1, MAX_LENGTH]),
+        attention_mask: new Tensor("int64", toBigInt64(attentionMask), [
+          1,
+          MAX_LENGTH,
+        ]),
+        token_type_ids: new Tensor("int64", toBigInt64(tokenTypeIds), [
+          1,
+          MAX_LENGTH,
+        ]),
+      } as const;
+      const output = await session.run(feeds);
+      const embedding = output.sentence_embedding.data as Float32Array;
+      return Array.from(embedding);
+    },
+    [session]
+  );
+
+  return { forward, isReady: !!session } as const;
+}
 
 // Function to calculate cosine similarity between two vectors
 function cosineSimilarity(vecA: number[], vecB: number[]): number {
@@ -34,10 +123,7 @@ type ClassificationResult = {
 };
 
 export function useShoppingClassifier() {
-  const { forward, isReady } = useTextEmbeddings({
-    modelSource: MULTI_QA_MINILM_L6_COS_V1,
-    tokenizerSource: MULTI_QA_MINILM_L6_COS_V1_TOKENIZER,
-  });
+  const { forward, isReady } = useOnnxEmbeddings();
 
   // The `forward` function from the underlying hook might be unstable.
   // Store it in a ref to provide a stable reference to our callbacks.

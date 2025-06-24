@@ -70,7 +70,7 @@ curl -L https://get.maestro.mobile.dev | bash
 - **Mobile Framework:** Expo (React Native)
 - **Package Manager:** pnpm
 - **Database:** SQLite with Drizzle ORM
-- **AI Classification:** `react-native-executorch` for on-device inference.
+- **AI Classification:** `onnxruntime-react-native` for on-device inference.
 - **Geolocation:** `expo-location` with native geofencing via `expo-task-manager`.
 - **Maps:** MapBox for finding nearby store locations.
 
