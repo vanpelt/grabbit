@@ -21,7 +21,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#702EFB"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
@@ -38,9 +38,7 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "assetBundlePatterns": [
-      "assets/data/*"
-    ],
+    "assetBundlePatterns": ["assets/data/*"],
     "plugins": [
       "expo-router",
       "expo-speech-recognition",

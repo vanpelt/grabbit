@@ -1,11 +1,12 @@
 // useShoppingClassifier.ts
+import { logger } from "@/utils/logger";
 import { Asset } from "expo-asset";
 import { InferenceSession, Tensor } from "onnxruntime-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import tokenizerJson from "../assets/models/tokenizer.json";
+import tokenizerJson from "../assets/models/tokenizer-int8.json";
 import { keywordCategorize } from "../utils/keywordCategorizer";
 import { CATEGORIES, ItemCategory } from "../utils/shoppingCategories";
-const MODEL_ASSET = require("../assets/models/multi-qa-MiniLM-L6-cos-v1.onnx");
+const MODEL_ASSET = require("../assets/models/model_qint8_arm64.onnx");
 // Directly import the JSON data. Webpack/Metro will parse this for us.
 import categoryVectors from "../assets/data/category_vectors.json";
 
@@ -65,17 +66,80 @@ function encode(text: string) {
   return { inputIds: ids, attentionMask: attention, tokenTypeIds: typeIds };
 }
 
+// Function to perform mean pooling on last_hidden_state
+function meanPooling(
+  lastHiddenState: Float32Array,
+  attentionMask: number[],
+  sequenceLength: number,
+  hiddenSize: number
+): number[] {
+  const sentenceEmbedding = new Float32Array(hiddenSize);
+
+  for (let dim = 0; dim < hiddenSize; dim++) {
+    let sum = 0;
+    let count = 0;
+
+    for (let seq = 0; seq < sequenceLength; seq++) {
+      // Only include tokens that are not padding (attention_mask == 1)
+      if (attentionMask[seq] === 1) {
+        const index = seq * hiddenSize + dim;
+        sum += lastHiddenState[index];
+        count++;
+      }
+    }
+
+    sentenceEmbedding[dim] = count > 0 ? sum / count : 0;
+  }
+
+  return Array.from(sentenceEmbedding);
+}
+
 function useOnnxEmbeddings() {
+  const loadingRef = useRef(false);
+  const sessionRef = useRef<InferenceSession | null>(null);
   const [session, setSession] = useState<InferenceSession | null>(null);
 
   useEffect(() => {
     (async () => {
-      const asset = Asset.fromModule(MODEL_ASSET);
-      await asset.downloadAsync();
-      const uri = asset.localUri || asset.uri;
-      const s = await InferenceSession.create(uri);
-      setSession(s);
+      try {
+        // Check if we already have a session
+        if (sessionRef.current) {
+          logger.log("Model already loaded, using existing session");
+          setSession(sessionRef.current);
+          return;
+        }
+
+        // Check if loading is already in progress
+        if (loadingRef.current) {
+          logger.log("Model already loading, skipping");
+          return;
+        }
+
+        loadingRef.current = true;
+        logger.log("Starting model loading...");
+
+        const asset = Asset.fromModule(MODEL_ASSET);
+        await asset.downloadAsync();
+        const uri = asset.localUri || asset.uri;
+        const s = await InferenceSession.create(uri);
+
+        // Store the session in both ref and state
+        sessionRef.current = s;
+        setSession(s);
+
+        logger.log("Model loaded successfully");
+      } catch (e) {
+        logger.error("Error creating ONNX session", e);
+        // Reset loading flag on error so we can retry
+        loadingRef.current = false;
+      }
     })();
+
+    // Cleanup function
+    return () => {
+      // Don't reset loadingRef here - we want to keep track of loading state
+      // even across component unmounts/remounts
+    };
   }, []);
 
   const forward = useCallback(
@@ -97,9 +161,44 @@ function useOnnxEmbeddings() {
           MAX_LENGTH,
         ]),
       } as const;
-      const output = await session.run(feeds);
-      const embedding = output.sentence_embedding.data as Float32Array;
-      return Array.from(embedding);
+      try {
+        const output = await session.run(feeds);
+
+        // First, try to get sentence_embedding directly
+        const sentenceEmbedding = output.sentence_embedding?.data as
+          | Float32Array
+          | undefined;
+
+        if (sentenceEmbedding) {
+          return Array.from(sentenceEmbedding);
+        }
+
+        // Fallback: check for last_hidden_state and perform pooling
+        const lastHiddenState = output.last_hidden_state?.data as
+          | Float32Array
+          | undefined;
+        if (!lastHiddenState) {
+          logger.error(
+            "No sentence_embedding or last_hidden_state found in output"
+          );
+          return [];
+        }
+
+        // Perform mean pooling over the sequence length
+        // last_hidden_state shape: [1, sequence_length, hidden_size]
+        const sequenceLength = MAX_LENGTH;
+        const hiddenSize = lastHiddenState.length / (1 * sequenceLength);
+
+        return meanPooling(
+          lastHiddenState,
+          attentionMask,
+          sequenceLength,
+          hiddenSize
+        );
+      } catch (e) {
+        logger.error("Error running ONNX forward pass", e);
+        return [];
+      }
     },
     [session]
   );
@@ -141,6 +240,7 @@ export function useShoppingClassifier() {
     async (itemName: string): Promise<ClassificationResult> => {
       // Use the stable ref to the forward function.
       if (!forwardRef.current) {
+        logger.warn("No forward function available");
         return {
           primaryCategory: UNKNOWN_CATEGORY,
         };
@@ -173,6 +273,10 @@ export function useShoppingClassifier() {
         )
         .filter(Boolean);
 
+      logger.log(
+        `❓ Query: ${itemName}, (${matchedCategories.length} categories, best score ${scores[0].score})`
+      );
+
       if (matchedCategories.length > 0) {
         return {
           primaryCategory: matchedCategories[0],
@@ -190,12 +294,16 @@ export function useShoppingClassifier() {
   // When the model becomes ready, process any pending items.
   useEffect(() => {
     if (isReady && pendingClassifications.current.size > 0) {
+      logger.log(
+        `Processing ${pendingClassifications.current.size} pending classifications...`
+      );
       pendingClassifications.current.forEach(async (resolve, itemName) => {
         const result = await classifyWithEmbeddings(itemName);
         resolve(result);
       });
       pendingClassifications.current.clear();
     }
+    logger.log("Model not ready...");
   }, [isReady, classifyWithEmbeddings]);
 
   const classify = useCallback(
@@ -224,6 +332,7 @@ export function useShoppingClassifier() {
       const asyncResult = new Promise<ClassificationResult>((resolve) => {
         pendingClassifications.current.set(itemName, resolve);
       });
+      logger.log("Model not ready, queueing classification for", itemName);
 
       return {
         syncResult: keywordResult,

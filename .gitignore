@@ -12,6 +12,7 @@ ios/
 android/
 *.ipa
 *.app/
+*.apk
 
 # Native
 .kotlin/
