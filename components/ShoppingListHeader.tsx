@@ -1,12 +1,12 @@
 import React from "react";
 import {
-    Animated,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Animated,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // --- Prop Types for Header ---
@@ -40,7 +40,7 @@ export const ShoppingListHeader = React.memo(
     const isInputEmpty = newItemName.trim().length === 0;
 
     return (
-      <>
+      <View style={styles.headerContainer}>
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
@@ -61,9 +61,8 @@ export const ShoppingListHeader = React.memo(
             </Animated.View>
           </TouchableOpacity>
         </View>
-
         <Text style={styles.h2}>Shopping List</Text>
-      </>
+      </View>
     );
   }
 );
@@ -87,7 +86,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 8,
     paddingHorizontal: 15,
-    paddingVertical: Platform.OS === "ios" ? 15 : 10,
+    paddingVertical: 15,
     color: "#000",
     fontSize: 16,
   },
@@ -104,5 +103,8 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 24,
+  },
+  headerContainer: {
+    paddingTop: Platform.OS === "android" ? 64 : 0,
   },
 });
